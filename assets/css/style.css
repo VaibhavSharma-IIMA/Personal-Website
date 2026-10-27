@@ -1258,3 +1258,25 @@ html { scroll-padding-top: 72px; }
 @media (max-width: 620px) {
   .variant-switch { border-radius: 12px; font-size: 0.66rem; padding: 6px 10px; gap: 4px; }
 }
+
+/* "Right now" strip */
+.now-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.now-card {
+  position: relative; display: flex; flex-direction: column; gap: 6px;
+  padding: 22px 22px 18px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--panel); backdrop-filter: blur(6px); color: inherit; text-decoration: none;
+  transition: transform 0.25s, border-color 0.25s;
+}
+.now-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.now-card h3 { font-size: 1.12rem; line-height: 1.3; }
+.now-card p { color: var(--muted); font-size: 0.92rem; }
+.now-org { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem !important; color: var(--accent) !important; }
+.now-tag {
+  align-self: flex-start; font-family: 'JetBrains Mono', monospace; font-size: 0.64rem; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--on-accent); background: var(--accent); padding: 2px 8px; border-radius: 4px; margin-bottom: 6px;
+}
+.now-tag.done { background: transparent; color: var(--quiet); border: 1px solid var(--border); }
+.now-live .now-tag::before { content: '● '; }
+.now-link { margin-top: auto; padding-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent); }
+.timeline-desc::before { background: linear-gradient(var(--accent), var(--accent-2), transparent); }
+@media (max-width: 860px) { .now-grid { grid-template-columns: 1fr; } }

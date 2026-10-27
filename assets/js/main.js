@@ -153,17 +153,55 @@ window.__variant = (() => {
     window.addEventListener('themechange', () => {
       theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     });
+    // campus: a labelled CanSat packet table (illustrative) scrolling under a pinned header
     const TEL = {
-      dark:  ['#3dff9a', '#38bdf8', '#fbbf24'],
-      light: ['#0a7a45', '#0369a1', '#a86a00'],
+      dark:  { head: '#3dff9a', band: 'rgba(61,255,154,0.10)', val: '#3dff9a', dim: 'rgba(61,255,154,0.7)', state: '#38bdf8', chute: '#fbbf24' },
+      light: { head: '#0a7a45', band: 'rgba(10,122,69,0.10)', val: '#0a7a45', dim: 'rgba(10,122,69,0.75)', state: '#0369a1', chute: '#a86a00' },
     };
-    let pkt = 4000;
-    const telLine = () => {
-      const t = Math.floor(Math.random() * 3600);
-      const k = Math.random() < 0.7 ? 0 : Math.random() < 0.8 ? 1 : 2;
-      const tag = k === 2 ? 'RETRY' : k === 1 ? 'CMD-ACK' : 'OK';
-      pkt += 1;
-      return { k, s: `T+${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')} PKT#${pkt} ALT ${(Math.random() * 700).toFixed(1)}m TEMP ${(18 + Math.random() * 9).toFixed(1)}C ${tag}` };
+    const TCOLS = [['TEAM', 0], ['MISSION_TIME', 58], ['PKT', 170], ['ALT_m', 218], ['TEMP_C', 282], ['VOLT', 346], ['STATE', 398]];
+    const TABLE_W = 520, ROW_H = 15;
+    // one packet per second over a looping ~5 minute flight
+    const packet = (n) => {
+      const t = ((n % 300) + 300) % 300;
+      let alt, state;
+      if (t < 4) { alt = 0; state = 'LAUNCH_WAIT'; }
+      else if (t < 22) { alt = 700 * Math.sin(((t - 4) / 18) * Math.PI / 2); state = 'ASCENT'; }
+      else if (t < 26) { alt = 700; state = 'APOGEE'; }
+      else if (t < 120) { alt = 700 - (t - 26) * 3.2; state = 'DESCENT'; }
+      else if (t < 288) { alt = Math.max(0, 400 - (t - 120) * 2.4); state = 'PARACHUTE'; }
+      else { alt = 0; state = 'LANDED'; }
+      const mm = String(Math.floor(t / 60)).padStart(2, '0'), ss = String(t % 60).padStart(2, '0');
+      return ['GAGAN', `00:${mm}:${ss}`, String(1000 + (((n % 9000) + 9000) % 9000)), alt.toFixed(1),
+        (21 + Math.sin(n * 0.7) * 2.5).toFixed(1), (5.02 - (t / 300) * 0.2).toFixed(2), state];
+    };
+    let telScroll = 0;
+    const drawTelemetry = (alpha) => {
+      const P = TEL[theme];
+      const top = 96, tiles = Math.max(1, Math.ceil(w / TABLE_W));
+      telScroll += 0.35;
+      const first = Math.floor(telScroll / ROW_H), off = telScroll % ROW_H;
+      ctx.font = '12px "JetBrains Mono", monospace';
+      for (let tIdx = 0; tIdx < tiles; tIdx++) {
+        const x0 = 16 + tIdx * TABLE_W;
+        for (let r = 0; top + 22 + r * ROW_H - off < h + ROW_H; r++) {
+          const y = top + 22 + r * ROW_H - off;
+          if (y < top + 20) continue;
+          const row = packet(first + r + tIdx * 97);
+          const fade = Math.max(0.12, Math.min(0.9, 1 - Math.abs(y - h * 0.55) / (h * 0.7)));
+          row.forEach((v, i) => {
+            ctx.globalAlpha = alpha * fade * 0.6;
+            ctx.fillStyle = i === 6 ? (v === 'PARACHUTE' ? P.chute : P.state) : i === 3 ? P.val : P.dim;
+            ctx.fillText(v, x0 + TCOLS[i][1], y);
+          });
+        }
+        // pinned header
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.fillStyle = P.band; ctx.fillRect(x0 - 8, top, TABLE_W - 24, 20);
+        ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.fillStyle = P.head;
+        TCOLS.forEach(([c, x]) => ctx.fillText(c, x0 + x, top + 14));
+        ctx.font = '12px "JetBrains Mono", monospace';
+      }
+      ctx.globalAlpha = 1;
     };
     const SVC = ['events-api', 'ingest', 'router', 'query', 'kafka', 'index', 'traffic', 'emitter'];
     const MSG = ['request handled', 'flush batch', 'ack offset', 'retry backoff',
@@ -188,7 +226,7 @@ window.__variant = (() => {
       const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■';
       return { d: dir, s: `${rnd(SYM).padEnd(9)} ${px.padStart(9)} ${arrow} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%` };
     };
-    const line = () => ({ tel: telLine(), log: logLine(), tape: tapeLine() });
+    const line = () => ({ log: logLine(), tape: tapeLine() });
     const setup = () => {
       const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
       const fontH = 15, colW = 250;
@@ -208,6 +246,7 @@ window.__variant = (() => {
       ctx.font = '13px "JetBrains Mono", monospace';
       const ph = window.__phase;
       const wC = Math.max(0, 1 - ph), wE = Math.max(0, 1 - Math.abs(ph - 1)), wF = Math.max(0, ph - 1);
+      if (wC > 0) drawTelemetry(wC);
       for (const col of drops) {
         col.y += col.speed * (1 - wF * 0.5);
         if (col.y > col.fontH) {
@@ -220,11 +259,6 @@ window.__variant = (() => {
           if (yy < -col.fontH || yy > h + col.fontH) continue;
           const fade = Math.max(0.08, Math.min(0.9, 1 - Math.abs(yy - h * 0.5) / (h * 0.7)));
           const ln = col.lines[k];
-          if (wC > 0) {
-            ctx.globalAlpha = fade * wC;
-            ctx.fillStyle = TEL[theme][ln.tel.k];
-            ctx.fillText(ln.tel.s, col.x, yy);
-          }
           if (wE > 0) {
             ctx.globalAlpha = fade * wE;
             ctx.fillStyle = PALETTE[theme][ln.log.k];
