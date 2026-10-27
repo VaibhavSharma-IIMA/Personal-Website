@@ -158,8 +158,8 @@ window.__variant = (() => {
       dark:  { head: '#3dff9a', band: 'rgba(61,255,154,0.10)', val: '#3dff9a', dim: 'rgba(61,255,154,0.7)', state: '#38bdf8', chute: '#fbbf24' },
       light: { head: '#0a7a45', band: 'rgba(10,122,69,0.10)', val: '#0a7a45', dim: 'rgba(10,122,69,0.75)', state: '#0369a1', chute: '#a86a00' },
     };
-    const TCOLS = [['TEAM', 0], ['MISSION_TIME', 58], ['PKT', 170], ['ALT_m', 218], ['TEMP_C', 282], ['VOLT', 346], ['STATE', 398]];
-    const TABLE_W = 520, ROW_H = 15;
+    const TCOLS = [['TEAM', 0], ['MISSION_TIME', 58], ['PKT', 170], ['ALT_m', 218], ['PRESS_hPa', 282], ['TEMP_C', 366], ['VOLT', 430], ['STATE', 482]];
+    const TABLE_W = 610, ROW_H = 15;
     // one packet per second over a looping ~5 minute flight
     const packet = (n) => {
       const t = ((n % 300) + 300) % 300;
@@ -171,7 +171,8 @@ window.__variant = (() => {
       else if (t < 288) { alt = Math.max(0, 400 - (t - 120) * 2.4); state = 'PARACHUTE'; }
       else { alt = 0; state = 'LANDED'; }
       const mm = String(Math.floor(t / 60)).padStart(2, '0'), ss = String(t % 60).padStart(2, '0');
-      return ['GAGAN', `00:${mm}:${ss}`, String(1000 + (((n % 9000) + 9000) % 9000)), alt.toFixed(1),
+      const press = 1013.25 * Math.pow(1 - 2.25577e-5 * alt, 5.25588); // standard atmosphere
+      return ['GAGAN', `00:${mm}:${ss}`, String(1000 + (((n % 9000) + 9000) % 9000)), alt.toFixed(1), press.toFixed(1),
         (21 + Math.sin(n * 0.7) * 2.5).toFixed(1), (5.02 - (t / 300) * 0.2).toFixed(2), state];
     };
     let telScroll = 0;
@@ -190,7 +191,7 @@ window.__variant = (() => {
           const fade = Math.max(0.12, Math.min(0.9, 1 - Math.abs(y - h * 0.55) / (h * 0.7)));
           row.forEach((v, i) => {
             ctx.globalAlpha = alpha * fade * 0.6;
-            ctx.fillStyle = i === 6 ? (v === 'PARACHUTE' ? P.chute : P.state) : i === 3 ? P.val : P.dim;
+            ctx.fillStyle = i === 7 ? (v === 'PARACHUTE' ? P.chute : P.state) : i === 3 ? P.val : P.dim;
             ctx.fillText(v, x0 + TCOLS[i][1], y);
           });
         }
