@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Vaibhav Sharma · Engineer turned Investor</title>
+  <meta name="description" content="Vaibhav Sharma · ex-Software Engineer (Observability) at LinkedIn, IB Summer Intern at Deutsche Bank, Investment Partner at Campus Fund, MBA candidate at IIM Ahmedabad." />
+  <meta name="author" content="Vaibhav Sharma" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Vaibhav Sharma · Engineer turned Investor" />
+  <meta property="og:description" content="From petabyte-scale data platforms at LinkedIn to Investment Banking at Deutsche Bank and backing student founders at Campus Fund." />
+  <meta property="og:type" content="website" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+  <script>
+    // Set theme before first paint to avoid a flash of the wrong theme.
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+      document.documentElement.setAttribute('data-mode', 'eng');
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#top">Skip to content</a>
+
+  <!-- Live backdrop: log stream that turns into a market tape past the pivot -->
+  <canvas id="log-stream" aria-hidden="true"></canvas>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="Home">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span class="brand-text">vaibhav<span class="accent" id="brand-suffix">.o11y</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#about">About</a>
+      <a href="#experience">Career</a>
+      <a href="#work">Builds</a>
+      <a href="#pivot">Pivot</a>
+      <a href="#deals">Deals</a>
+      <a href="#chart">Chart</a>
+      <a href="#honors">Honors</a>
+      <a href="#contact" class="nav-cta">Pitch me</a>
+    </nav>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme" title="Toggle light/dark theme">
+      <span class="theme-icon" aria-hidden="true">☾</span>
+    </button>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <div class="status-pill">
+          <span class="pulse-dot"></span>
+          <span>now: Investment Partner @ Campus Fund &nbsp;·&nbsp; PGP @ IIM A</span>
+        </div>
+        <h1 class="hero-title">
+          Vaibhav <span class="accent">Sharma</span>
+        </h1>
+        <p class="hero-role">
+          <span class="type-line" id="typewriter"></span><span class="caret">▌</span>
+        </p>
+        <p class="hero-sub">
+          Building is the through-line. A rocket-deployed <strong>satellite</strong> that ranked
+          <strong>#2 in the world</strong>, then two years on LinkedIn's
+          <span class="tag tag-log">logs</span> and <span class="tag tag-event">events</span> platforms, ingesting
+          <strong>9PB+</strong> a day. Then a summer in <strong>Investment Banking</strong>
+          <span class="nowrap"><span class="at">@ Deutsche Bank</span></span>. Now I'm on the other side of the table,
+          backing student founders <span class="nowrap"><span class="at">@ Campus Fund</span></span>.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#experience">View career log</a>
+          <a class="btn btn-ghost" href="#pivot">Skip to the pivot ↓</a>
+        </div>
+      </div>
+
+      <!-- Live pipeline visualization -->
+      <div class="pipeline-wrap" aria-hidden="true">
+        <canvas id="pipeline"></canvas>
+        <div class="pipeline-label">event pipeline · demo</div>
+      </div>
+
+      <!-- Simulated throughput ticker (NOT real metrics) -->
+      <div class="metrics-bar" aria-hidden="true">
+        <div class="metrics-flag" title="These figures are randomly generated for illustration only.">
+          <span class="mf-dot"></span> simulated · not real metrics
+        </div>
+        <div class="metric"><span class="m-label">ingest</span><span class="m-val" id="m-ingest">0</span><span class="m-unit">events/s</span></div>
+        <div class="metric"><span class="m-label">p99 latency</span><span class="m-val" id="m-latency">0</span><span class="m-unit">ms</span></div>
+        <div class="metric"><span class="m-label">log volume</span><span class="m-val" id="m-volume">0</span><span class="m-unit">TB/hr</span></div>
+        <div class="metric"><span class="m-label">errors</span><span class="m-val" id="m-errors">0.00</span><span class="m-unit">%</span></div>
+        <canvas id="sparkline" class="sparkline"></canvas>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="section">
+      <div class="section-head">
+        <span class="section-index">01</span>
+        <h2>A life of crossroads</h2>
+      </div>
+      <div class="about-grid">
+        <div class="about-copy">
+          <p>
+            In 2018 I sat the <strong>NDA exam</strong> with no coaching and no prep, just to see how I'd do,
+            and came out with <strong>All India Rank 10</strong>. That opened the door to life as a
+            <strong>pilot in the Indian Air Force</strong>. It was the first real fork in my road, and I chose
+            <em>engineering</em>, the thing I actually loved. I kept the discipline and grit the exam had
+            asked of me.
+          </p>
+          <p>
+            At <strong>NSUT Delhi</strong> I walked into a satellite team knowing nothing about satellites.
+            Two years later, as a sophomore, I was leading ten people to <strong>International Rank 2</strong> at
+            NASA-sponsored CanSat. At <strong>LinkedIn</strong> I didn't know how the corporate world worked
+            either. I learned fast and ended up building platforms the whole company relied on.
+          </p>
+          <p>
+            Then the next fork: I deferred my <strong>IIM Ahmedabad</strong> admit for two years and finally took it up in 2025.
+            First-year finance courses pulled me towards markets, a summer at <strong>Deutsche Bank</strong> taught me
+            how to underwrite a business rather than just admire it, and today I back the people doing the building.
+          </p>
+          <p class="quiet">
+            Outlearn, outwork, outpersevere. Curious, disciplined and collaborative: someone who takes on
+            challenges to grow, and to build something meaningful with others.
+          </p>
+        </div>
+        <ul class="timeline">
+          <li>
+            <span class="t-dot"></span>
+            <div><h4>NDA AIR 10 → chose engineering</h4><p>Picked a B.Tech over the IAF cockpit, 2018–19.</p></div>
+          </li>
+          <li>
+            <span class="t-dot"></span>
+            <div><h4>CanSat Team Leader</h4><p>International Rank 2 <span class="at">@ NSUT</span>, 2021.</p></div>
+          </li>
+          <li>
+            <span class="t-dot"></span>
+            <div><h4>Software Engineer · Observability</h4><p>Logs &amp; Events platforms <span class="at">@ LinkedIn</span>, 2023–25.</p></div>
+          </li>
+          <li>
+            <span class="t-dot"></span>
+            <div><h4>PGP · IIM Ahmedabad</h4><p>MBA, class of 2027. Xceedance merit scholar.</p></div>
+          </li>
+          <li>
+            <span class="t-dot"></span>
+            <div><h4>Investment Banking Summer Intern</h4><p><span class="at">@ Deutsche Bank</span>, 2026.</p></div>
+          </li>
+          <li>
+            <span class="t-dot t-active"></span>
+            <div><h4>Investment Partner</h4><p>Backing student founders <span class="at">@ Campus Fund</span>.</p></div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE : log explorer -->
+    <section id="experience" class="section">
+      <div class="section-head">
+        <span class="section-index">02</span>
+        <h2>Career log <span class="head-sub">// grep -r "vaibhav" ./linkedin</span></h2>
+      </div>
+
+      <!-- impact stats -->
+      <div class="impact" id="impact">
+        <div class="stat" data-target="1" data-prefix="$" data-suffix="M+" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">annual savings delivered <span class="stat-note">Azure region migration</span></div>
+        </div>
+        <div class="stat" data-target="9" data-suffix=" PB+" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">daily log ingestion managed <span class="stat-note">central logs platform</span></div>
+        </div>
+        <div class="stat" data-target="3" data-suffix=" PB+" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">daily ingestion migrated <span class="stat-note">single-handedly</span></div>
+        </div>
+        <div class="stat" data-target="300" data-suffix="K+" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">events / day, from zero <span class="stat-note">5+ producer teams</span></div>
+        </div>
+        <div class="stat" data-target="83" data-suffix="%" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">faster traffic shifts <span class="stat-note">inter-datacenter</span></div>
+        </div>
+        <div class="stat" data-target="2" data-suffix="×" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">Bravo awards <span class="stat-note">sole recipient among 4</span></div>
+        </div>
+      </div>
+
+      <div class="team-strip">
+        <span class="team-key">TEAM</span>
+        <span><strong>Observability Engineering · Logs &amp; Events</strong>, LinkedIn Bangalore. We ran the centralized logging
+        platform and the events store, built on Kafka, Azure Data Explorer, Azure Blob Storage and Event Grid.</span>
+      </div>
+
+      <div class="explorer">
+        <!-- KQL query bar -->
+        <div class="query-bar">
+          <div class="query-dots"><span></span><span></span><span></span></div>
+          <div class="query-title">career.kql · Azure Data Explorer</div>
+        </div>
+        <pre class="kql" id="kql"><span class="k-tbl">CareerLog</span>
+<span class="k-op">|</span> <span class="k-kw">where</span> engineer <span class="k-eq">==</span> <span class="k-str">"vaibhav.sharma"</span><span class="k-flt" id="kql-filter"></span>
+<span class="k-op">|</span> <span class="k-kw">order by</span> ts <span class="k-kw">desc</span></pre>
+
+        <!-- filter chips -->
+        <div class="filters" id="filters" role="group" aria-label="Filter career log by category">
+          <button class="filter active" data-f="all" aria-pressed="true">all</button>
+          <button class="filter" data-f="logs" aria-pressed="false">logs</button>
+          <button class="filter" data-f="events" aria-pressed="false">events</button>
+          <button class="filter" data-f="reliability" aria-pressed="false">reliability</button>
+          <button class="filter" data-f="internship" aria-pressed="false">internship</button>
+          <button class="filter" data-f="college" aria-pressed="false">college</button>
+        </div>
+
+        <!-- tenure histogram -->
+        <div class="histo-wrap">
+          <span class="histo-label">log volume<br><span class="histo-axis">older → newer</span></span>
+          <div class="histo" id="histo" role="img" aria-label="Bar chart of entries per year, oldest to newest"></div>
+        </div>
+
+        <!-- results header -->
+        <div class="log-head" aria-hidden="true">
+          <span class="lh-ts">timestamp</span>
+          <span class="lh-lvl">level</span>
+          <span class="lh-svc">service</span>
+          <span class="lh-msg">message</span>
+        </div>
+
+        <!-- log rows injected here -->
+        <div class="log-rows" id="log-rows" role="list" aria-label="Career history, each entry expandable"></div>
+
+        <!-- query stats -->
+        <div class="query-stats" id="query-stats"></div>
+      </div>
+
+      <!-- education strip -->
+      <div class="edu-strip">
+        <span class="edu-key">EDU</span>
+        <span class="edu-item"><strong>PGP (MBA)</strong> · IIM Ahmedabad · 2025–27</span>
+        <span class="edu-item"><strong>B.Tech IT</strong> · NSUT Delhi · 8.95/10 · Dept Rank 3/147 · 2023</span>
+        <span class="edu-item">Mount Carmel School, Delhi · XII 97% · X 10/10</span>
+      </div>
+    </section>
+
+    <!-- FOCUS -->
+    <section id="focus" class="section">
+      <div class="section-head">
+        <span class="section-index">03</span>
+        <h2>What I built on</h2>
+      </div>
+      <div class="cards">
+        <article class="card card-log">
+          <div class="card-viz" id="viz-logs"></div>
+          <h3>Logs</h3>
+          <p>Kept the central logs platform real-time at 9PB+ a day, and moved 3PB+ a day across Azure
+             regions without losing a line, saving $1M+ a year.</p>
+          <ul class="chips"><li>ingestion</li><li>migration</li><li>alerting</li><li>cost</li></ul>
+        </article>
+        <article class="card card-event">
+          <div class="card-viz" id="viz-events"></div>
+          <h3>Events</h3>
+          <p>Helped architect the central events platform from scratch: shaped features around how teams
+             actually emitted events, built the Python emitter library and API layer, and onboarded 5+ producers.</p>
+          <ul class="chips"><li>architecture</li><li>SDKs</li><li>APIs</li><li>onboarding</li></ul>
+        </article>
+        <article class="card card-rel">
+          <div class="card-viz" id="viz-rel"></div>
+          <h3>Reliability</h3>
+          <p>Made LinkedIn's traffic-shift tool 83% faster for incident response, cut its data-loss window to
+             a day, and resolved 20+ critical incidents on call.</p>
+          <ul class="chips"><li>incidents</li><li>on-call</li><li>traffic</li><li>MTTD</li></ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- STACK -->
+    <section id="stack" class="section">
+      <div class="section-head">
+        <span class="section-index">04</span>
+        <h2>Tools of the trade</h2>
+      </div>
+      <div class="stack-grid" id="stack-grid"></div>
+    </section>
+
+    <!-- WORK -->
+    <section id="work" class="section">
+      <div class="section-head">
+        <span class="section-index">05</span>
+        <h2>Traces <span class="head-sub">// builds, hackathons &amp; competitions</span></h2>
+      </div>
+      <div class="work-grid" id="work-grid"></div>
+    </section>
+
+    <!-- THE PIVOT -->
+    <section id="pivot" class="pivot" aria-labelledby="pivot-title">
+      <div class="pivot-sticky">
+        <div class="pivot-head">
+          <div>
+            <div class="pivot-kicker" id="pivot-kicker">$ tail -f /var/log/career</div>
+            <h2 class="pivot-title" id="pivot-title">From <span class="from">throughput</span> to <span class="accent">returns</span></h2>
+          </div>
+          <div class="pivot-readout" id="pivot-readout">mode: <b>engineering</b></div>
+        </div>
+        <canvas id="pivot-canvas" aria-hidden="true"></canvas>
+        <p class="pivot-copy">
+          Same instinct, new instrument. An engineer's sense for what's <strong>genuinely hard to build</strong>,
+          and a banker's eye for whether <strong>the economics hold up</strong>. Keep scrolling as the log volume turns into price action.
+        </p>
+        <div class="pivot-progress" aria-hidden="true"><span id="pivot-bar"></span></div>
+      </div>
+    </section>
+
+    <!-- DEALS -->
+    <section id="deals" class="section">
+      <div class="term-bar" aria-hidden="true">
+        <span class="term-cmd">VBHV &lt;Equity&gt; DES<span class="go">GO</span></span>
+        <span class="fkey"><b>1)</b>Deals</span>
+        <span class="fkey"><b>2)</b>Chart</span>
+        <span class="fkey"><b>3)</b>Holdings</span>
+        <span class="fkey"><b>4)</b>Terms</span>
+        <span class="term-clock" id="term-clock">--:--:-- IST</span>
+      </div>
+      <div class="section-head">
+        <span class="section-index fin-index">06</span>
+        <h2>Tombstones <span class="head-sub">// deals closed &amp; positions open</span></h2>
+      </div>
+      <div class="tombs">
+        <article class="tomb">
+          <span class="tomb-status closed">CLOSED</span>
+          <div class="tomb-org">LinkedIn</div>
+          <div class="tomb-role">Software Engineer · Observability</div>
+          <div class="tomb-big">$1M+</div>
+          <div class="tomb-big-l">annual savings delivered</div>
+          <div class="tomb-rule"></div>
+          <ul>
+            <li>SRE intern → PPO, 2022</li>
+            <li>9PB+/day logs platform</li>
+            <li>Events platform, 0 → 300K/day</li>
+            <li>2× Bravo award</li>
+          </ul>
+          <div class="tomb-date">JUL 2023 – JUN 2025</div>
+        </article>
+        <article class="tomb">
+          <span class="tomb-status">OPEN</span>
+          <div class="tomb-org">IIM Ahmedabad</div>
+          <div class="tomb-role">PGP · Class of 2027</div>
+          <div class="tomb-big">₹14L</div>
+          <div class="tomb-big-l">Xceedance merit scholarship</div>
+          <div class="tomb-rule"></div>
+          <ul>
+            <li>Admit 2023, deferred 2 yrs</li>
+            <li>Full 2nd-year fee covered on Year-1 academics</li>
+            <li>Silver, Sangharsh'26 basketball</li>
+            <li>PM Dissect semi-finalist</li>
+          </ul>
+          <div class="tomb-date">2025 – 2027</div>
+        </article>
+        <article class="tomb">
+          <span class="tomb-status closed">CLOSED</span>
+          <div class="tomb-org">Deutsche Bank</div>
+          <div class="tomb-role">Investment Banking Summer Intern</div>
+          <div class="tomb-big">IBD</div>
+          <div class="tomb-big-l">first stint in finance</div>
+          <div class="tomb-rule"></div>
+          <ul>
+            <li>Valuation</li>
+            <li>Due diligence</li>
+            <li>Underwriting a business, not just admiring it</li>
+          </ul>
+          <div class="tomb-date">APR – MAY 2026</div>
+        </article>
+        <article class="tomb">
+          <span class="tomb-status">OPEN</span>
+          <div class="tomb-org">Campus Fund</div>
+          <div class="tomb-role">Investment Partner</div>
+          <div class="tomb-big">Day 0</div>
+          <div class="tomb-big-l">backing student founders</div>
+          <div class="tomb-rule"></div>
+          <ul>
+            <li>Students &amp; 2023+ grads/dropouts</li>
+            <li>Every sector on the table</li>
+            <li>A prototype or a conviction is enough</li>
+          </ul>
+          <div class="tomb-date">2026 – PRESENT</div>
+        </article>
+      </div>
+    </section>
+
+    <!-- CHART -->
+    <section id="chart" class="section">
+      <div class="section-head">
+        <span class="section-index fin-index">07</span>
+        <h2>VBHV <span class="head-sub">// price history, 2017 → today</span></h2>
+      </div>
+      <div class="quote">
+        <div class="quote-top">
+          <span class="q-tkr">VBHV</span>
+          <span class="q-name">Vaibhav Sharma · Builder &amp; Investor · NSE: IIMA</span>
+          <span class="q-px" id="q-px">—</span>
+          <span class="q-chg" id="q-chg"></span>
+        </div>
+        <div class="q-ranges" role="group" aria-label="Chart range">
+          <button class="q-range" data-r="1">1Y</button>
+          <button class="q-range" data-r="3">3Y</button>
+          <button class="q-range" data-r="5">5Y</button>
+          <button class="q-range active" data-r="0">MAX</button>
+        </div>
+        <div class="q-body">
+          <div class="q-chart" id="q-chart"></div>
+          <aside class="q-side" aria-live="polite">
+            <span class="q-side-k">event</span>
+            <span class="q-side-date" id="q-date"></span>
+            <span class="q-side-title" id="q-title"></span>
+            <span class="q-side-body" id="q-body"></span>
+            <div class="q-side-nav">
+              <button type="button" id="q-prev" aria-label="Previous event">◂ prev</button>
+              <button type="button" id="q-next" aria-label="Next event">next ▸</button>
+            </div>
+          </aside>
+        </div>
+        <div class="q-note">Price is illustrative, a stylised index of momentum. The events are real. Click a marker.</div>
+      </div>
+    </section>
+
+    <!-- HONORS -->
+    <section id="honors" class="section">
+      <div class="section-head">
+        <span class="section-index fin-index">08</span>
+        <h2>Holdings <span class="head-sub">// SELECT * FROM honors ORDER BY rank</span></h2>
+      </div>
+      <div class="holdings-wrap">
+        <table class="holdings" id="holdings">
+          <thead><tr><th>Ticker</th><th>Holding</th><th>Position</th><th>Field</th><th>Year</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BEYOND -->
+    <section id="community" class="section">
+      <div class="section-head">
+        <span class="section-index fin-index">09</span>
+        <h2>Beyond the desk</h2>
+      </div>
+      <div class="beyond-grid four">
+        <div class="beyond-panel">
+          <h3 class="beyond-title"><span class="beyond-ico">◉</span> On the court</h3>
+          <ul class="beyond-list">
+            <li><div class="bl-head"><span class="bl-role">Silver, Sangharsh'26</span><span class="bl-org">IIM A</span></div><p>Basketball at the inter-IIM sports tournament. Between all the deadlines, the court stayed a constant.</p></li>
+            <li><div class="bl-head"><span class="bl-role">Runner-up, Yalgaar</span><span class="bl-org">IIM A · 2025</span></div><p>Basketball tournament at IIM Ahmedabad.</p></li>
+            <li><div class="bl-head"><span class="bl-role">Winner, Freshers tournament</span><span class="bl-org">NSUT · 2019</span></div><p>Plus a Delhi region Basketball Zonals win in 2015 and an NCC 'A' Certificate.</p></li>
+          </ul>
+        </div>
+        <div class="beyond-panel">
+          <h3 class="beyond-title"><span class="beyond-ico">▲</span> On the trail</h3>
+          <ul class="beyond-list">
+            <li><div class="bl-head"><span class="bl-role">Hidimba Devi snow trek</span><span class="bl-org">Manali</span></div><p>My first snow trek.</p></li>
+            <li><div class="bl-head"><span class="bl-role">Kedarnath</span><span class="bl-org">Uttarakhand</span></div><p>Remembered as much for the roadside cooks feeding strangers with care on their way up as for the climb.</p></li>
+            <li><div class="bl-head"><span class="bl-role">Savandurga &amp; more</span><span class="bl-org">Bangalore</span></div><p>Weekend treks around Bangalore during the LinkedIn years.</p></li>
+          </ul>
+        </div>
+        <div class="beyond-panel">
+          <h3 class="beyond-title"><span class="beyond-ico">✦</span> On the shelf</h3>
+          <ul class="cert-list">
+            <li><span class="cert-cat">myth</span> The Mahabharata Secret series, Christopher C. Doyle</li>
+            <li><span class="cert-cat">myth</span> Shiva Trilogy, Amish Tripathi</li>
+            <li><span class="cert-cat">myth</span> Ram Chandra Series, Amish Tripathi</li>
+          </ul>
+          <p class="cert-note">Mythological fiction. I love the glimpses it gives of how advanced and scientific those times might have been.</p>
+        </div>
+        <div class="beyond-panel">
+          <h3 class="beyond-title"><span class="beyond-ico">◈</span> Leadership &amp; volunteering</h3>
+          <ul class="beyond-list">
+            <li><div class="bl-head"><span class="bl-role">Editor, The Alliance</span><span class="bl-org">NSUT</span></div><p>Launched 5 newspaper and magazine editions with 8K+ organic readers. Interviewed a college senior who cleared UPSC to become an IAS officer, and came away with: <em>"do it once more, not for success, but to avoid the weight of regret."</em></p></li>
+            <li><div class="bl-head"><span class="bl-role">WIE Vice Chair</span><span class="bl-org">IEEE NSUT · 2021–22</span></div><p>Also IEEE TEMS India Student Ambassador and a volunteer at INDICON 2020.</p></li>
+            <li><div class="bl-head"><span class="bl-role">Public speaking &amp; MUNs</span><span class="bl-org">Best Delegate</span></div><p>Best Delegate at AMIMUN'20, Special Mention at SYMUNC'19. Olympiads, debates, poetry and quizzes since school.</p></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="section contact">
+      <div class="section-head">
+        <span class="section-index fin-index">10</span>
+        <h2>Building something? Pitch me.</h2>
+      </div>
+      <p class="contact-copy">
+        The most ambitious companies take shape long before anyone can point to numbers, and that's where we
+        like to come in. The hardest part is usually just starting the conversation.
+      </p>
+      <div class="termsheet">
+        <div class="ts-head">
+          <span class="ts-title">Indicative term sheet</span>
+          <span class="ts-sub">non-binding · Campus Fund</span>
+        </div>
+        <div class="ts-row"><span class="ts-k">Investor</span><span class="ts-v">Vaibhav Sharma, Investment Partner, Campus Fund</span></div>
+        <div class="ts-row"><span class="ts-k">Eligible founders</span><span class="ts-v">Undergraduate, postgraduate or PhD students, or anyone who graduated or dropped out in 2023 or later</span></div>
+        <div class="ts-row"><span class="ts-k">Sectors</span><span class="ts-v ts-chips"><span>AI</span><span>DeepTech</span><span>SpaceTech</span><span>ClimateTech</span><span>HealthTech</span><span>Consumer</span><span>FinTech</span><span>Robotics</span><span>uncategorised</span></span></div>
+        <div class="ts-row"><span class="ts-k">Minimum traction</span><span class="ts-v">A prototype, an early experiment, or a strong conviction about a problem worth solving</span></div>
+        <div class="ts-row"><span class="ts-k">Email</span><span class="ts-v"><a href="mailto:vaibhav.sharma@yourcampusfund.com">vaibhav.sharma@yourcampusfund.com</a></span></div>
+        <div class="ts-row"><span class="ts-k">LinkedIn</span><span class="ts-v"><a href="https://www.linkedin.com/in/vaibhavsharma08/" target="_blank" rel="noopener">/in/vaibhavsharma08 ↗</a></span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>© <span id="year"></span> Vaibhav Sharma · Ahmedabad</span>
+    <span class="foot-status"><span class="pulse-dot"></span> <span id="foot-status">all systems operational</span></span>
+  </footer>
+
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
