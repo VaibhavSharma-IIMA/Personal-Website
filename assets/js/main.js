@@ -19,11 +19,10 @@ window.__mix = 0;
     const el = $('typewriter');
     if (!el) return;
     const phrases = [
-      'Software Engineer, Observability',
-      'Logs & Events @ petabyte scale',
-      'IB Summer Intern @ Deutsche Bank',
       'Investment Partner @ Campus Fund',
-      'MBA @ IIM Ahmedabad',
+      'MBA Candidate @ IIM Ahmedabad, Class of 2027',
+      'ex-Investment Banking Summer Intern @ Deutsche Bank',
+      'ex-Software Engineer @ LinkedIn',
     ];
     if (reduced) { el.textContent = phrases[0]; return; }
     let p = 0, i = 0, deleting = false;
