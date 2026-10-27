@@ -827,6 +827,32 @@ window.__mix = 0;
 })();
 
 /* =========================================================
+   Gentle heading snap: when scrolling stops with a heading within
+   SNAP_PX of its resting spot under the nav, glide it into place
+   ========================================================= */
+(() => {
+  'use strict';
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const SNAP_PX = 80;
+  const GAP = 16; // space between the nav bar and a snapped heading
+  const nav = document.querySelector('.nav');
+  const targets = [...document.querySelectorAll('.section-head, .snap-mark')];
+  let snapping = false, timer;
+  const settle = () => {
+    if (snapping) { snapping = false; return; }
+    const line = nav.getBoundingClientRect().height + (GAP);
+    let best = null;
+    targets.forEach((t) => {
+      const d = t.getBoundingClientRect().top - (t.classList.contains('snap-mark') ? line - GAP : line);
+      if (Math.abs(d) <= SNAP_PX && Math.abs(d) > 2 && (!best || Math.abs(d) < Math.abs(best))) best = d;
+    });
+    if (best !== null) { snapping = true; window.scrollBy({ top: best, behavior: 'smooth' }); }
+  };
+  if ('onscrollend' in window) window.addEventListener('scrollend', settle);
+  else window.addEventListener('scroll', () => { clearTimeout(timer); timer = setTimeout(settle, 160); }, { passive: true });
+})();
+
+/* =========================================================
    Terminal clock (IST)
    ========================================================= */
 (() => {
