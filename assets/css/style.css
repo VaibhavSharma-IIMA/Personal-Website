@@ -1143,3 +1143,17 @@ main, .footer { position: relative; z-index: 2; }
   .pivot-sticky { position: relative; height: auto; }
   :root { transition: none; }
 }
+
+/* ---- round 2 fixes ---- */
+.t-yr { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--accent); margin-bottom: 2px; letter-spacing: 0.5px; }
+.stack-grid { grid-auto-rows: 1fr; }
+.stack-item { height: 100%; }
+.work-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+.work-name { overflow-wrap: anywhere; }
+.work-owner { white-space: normal; max-width: 100%; }
+.work-lang { flex-wrap: wrap; gap: 7px 10px; }
+
+/* gentle section snapping: settles on a heading when you stop nearby, never traps */
+html { scroll-snap-type: y proximity; scroll-padding-top: 72px; }
+.hero, .section, .pivot { scroll-snap-align: start; }
+@media (prefers-reduced-motion: reduce) { html { scroll-snap-type: none; } }

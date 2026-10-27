@@ -19,11 +19,10 @@ window.__mix = 0;
     const el = $('typewriter');
     if (!el) return;
     const phrases = [
-      'Software Engineer, Observability',
-      'Logs & Events @ petabyte scale',
-      'IB Summer Intern @ Deutsche Bank',
       'Investment Partner @ Campus Fund',
-      'MBA @ IIM Ahmedabad',
+      'MBA Candidate @ IIM Ahmedabad, Class of 2027',
+      'ex-Investment Banking Summer Intern @ Deutsche Bank',
+      'ex-Software Engineer @ LinkedIn',
     ];
     if (reduced) { el.textContent = phrases[0]; return; }
     let p = 0, i = 0, deleting = false;
@@ -311,26 +310,37 @@ window.__mix = 0;
     requestAnimationFrame(draw);
   })();
 
-  // Events: orbiting producers around a central store
+  // Events: producers fan in to one topic, which fans out to consumers
   (() => {
     const host = $('viz-events'); if (!host || reduced) return;
-    const canvas = miniCanvas(host); let ctx, w, h;
-    const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
+    const canvas = miniCanvas(host); let ctx, w, h, P, T, C;
+    const setup = () => {
+      const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
+      P = [0.2, 0.4, 0.6, 0.8].map((v) => [w * 0.1, h * v]);
+      T = [w * 0.5, h * 0.5];
+      C = [0.3, 0.7].map((v) => [w * 0.9, h * v]);
+    };
     setup(); window.addEventListener('resize', setup);
-    const dots = Array.from({ length: 5 }, (_, i) => ({ a: i * 1.25, r: 18 + i * 6, s: 0.01 + i * 0.004 }));
-    const draw = () => {
+    const draw = (t) => {
       ctx.clearRect(0, 0, w, h);
-      const cx = w / 2, cy = h / 2;
-      ctx.strokeStyle = 'rgba(167,139,250,0.15)';
-      dots.forEach((d) => { ctx.beginPath(); ctx.arc(cx, cy, d.r, 0, Math.PI * 2); ctx.stroke(); });
-      ctx.fillStyle = '#a78bfa'; ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
-      dots.forEach((d) => {
-        d.a += d.s;
-        const x = cx + Math.cos(d.a) * d.r, y = cy + Math.sin(d.a) * d.r;
-        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(167,139,250,0.22)'; ctx.lineWidth = 1;
+      [...P.map((p) => [p, T]), ...C.map((c) => [T, c])].forEach(([a, b]) => {
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
       });
-      ctx.shadowBlur = 0;
+      for (let k = 0; k < 8; k++) {
+        const ph = ((t / 1400) + k / 8) % 1;
+        const [a, b, f] = ph < 0.5 ? [P[k % 4], T, ph * 2] : [T, C[k % 2], (ph - 0.5) * 2];
+        ctx.fillStyle = k % 3 ? '#a78bfa' : '#4ade80';
+        ctx.beginPath(); ctx.arc(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = '#a78bfa';
+      [...P, ...C].forEach((n) => {
+        ctx.beginPath(); ctx.fillStyle = '#0a0e17'; ctx.arc(n[0], n[1], 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      });
+      ctx.fillStyle = '#1a1433'; ctx.lineWidth = 2;
+      ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.roundRect(T[0] - 16, T[1] - 10, 32, 20, 4); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.lineWidth = 1;
       requestAnimationFrame(draw);
     };
     requestAnimationFrame(draw);
@@ -363,8 +373,8 @@ window.__mix = 0;
     const grid = $('stack-grid'); if (!grid) return;
     const stack = [
       ['Python', '#4ade80'], ['Go', '#38e1ff'], ['Kafka', '#a78bfa'],
-      ['Azure Data Explorer', '#38bdf8'], ['Kusto / KQL', '#38e1ff'], ['Azure Blob', '#7c5cff'],
-      ['Event Grid', '#7c5cff'], ['Kubernetes', '#38bdf8'], ['MySQL', '#fbbf24'],
+      ['Fluent Bit', '#fb923c'], ['Azure Data Explorer', '#38bdf8'], ['Kusto / KQL', '#38e1ff'],
+      ['MySQL', '#fbbf24'],
       ['Couchbase', '#f87171'], ['Gradle', '#94a3b8'], ['GenAI / LLMs', '#4ade80'],
       ['Alerting & dashboards', '#fbbf24'], ['Incident response', '#f87171'],
     ];
@@ -381,21 +391,21 @@ window.__mix = 0;
     }[t] || '#8a97ad');
     const items = [
       { name: 'cansat-ground-station', owner: 'CanSat 2021', tag: 'space', prize: 'Intl Rank 2 / 200+',
-        description: 'Built from scratch for two-way comms with the satellite and its payloads. 0% packet loss, 100% commands received, 1s latency via a multithreaded GUI. Lifted the team score 30%.' },
+        description: 'I built the ground station from scratch so we could talk to the satellite and its payloads both ways. It had 0% packet loss and received 100% of commands, and multithreading the GUI brought data latency down to 1s. It raised our practical evaluation score by 30%.' },
       { name: 'project-satark', owner: '5G Hackathon · DoT', tag: 'hackathon', prize: '₹1 Lakh · Top 100 / 1K+',
-        description: 'Selected among the "Top 100 Use Cases" in the Government of India\'s 5G Hackathon run by the Department of Telecommunications.' },
+        description: 'Project SATARK was picked as one of the Top 100 use cases, out of 1K+ entries, in the 5G Hackathon run by the Department of Telecommunications.' },
       { name: 'chandigarh-police-hack', owner: 'Chandigarh Police × Infosys', tag: 'hackathon', prize: '2nd · ₹50,000',
-        description: '2nd overall among 20+ teams at the hackathon run jointly by Chandigarh Police and Infosys.' },
+        description: 'Came 2nd out of 20+ teams at the hackathon Chandigarh Police ran with Infosys.' },
       { name: 'iace-hackathon', owner: 'NITI Aayog × CSIRO', tag: 'hackathon', prize: 'Top 5 / 1,500+',
-        description: 'Finalist at the India–Australia Circular Economy Hackathon by Atal Innovation Mission (NITI Aayog) and CSIRO, Australia.' },
+        description: 'Made the top 5 at the India-Australia Circular Economy Hackathon, run by Atal Innovation Mission (NITI Aayog) and CSIRO, Australia.' },
       { name: 'wiehack-3.0', owner: 'BVP IEEE', tag: 'hackathon', prize: '1st · ₹10,000',
-        description: 'First place overall out of 100+ teams.' },
+        description: 'Won first place out of 100+ teams.' },
       { name: 'innovathon-22', owner: 'Lady Hardinge Medical College', tag: 'hackathon', prize: '3rd · ₹4,000',
-        description: 'Medical hackathon, 3rd out of 100+ teams.' },
+        description: 'Came 3rd out of 100+ teams at this medical hackathon.' },
       { name: 'cusehacks · apollohacks', owner: 'International', tag: 'hackathon', prize: '$100 × 2',
         description: '"Best Hack for Social Good" out of 200+ at CuseHacks\'21 and "Best Solo Hack" out of 50+ at ApolloHacks\'21.' },
       { name: 'reply-code-challenge', owner: 'Reply · 2021', tag: 'coding', prize: 'India #10 · World #106',
-        description: 'Team coding challenge with 2,000+ teams worldwide.' },
+        description: 'A team coding challenge with 2,000+ teams from around the world.' },
       { name: 'pm-dissect', owner: 'ProdMan Club, IIM A', tag: 'product', prize: 'Top 25 / 99 teams',
         description: 'Shortlisted for the semi-finals of the product management case competition, out of 219 participants.' },
     ];
@@ -640,7 +650,6 @@ window.__mix = 0;
   let seed = 7;
   const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
   const N = 32;
-  const LOGC = ['#4ade80', '#38bdf8', '#fbbf24', '#f87171'];
   let price = 100;
   const data = Array.from({ length: N }, () => {
     const open = price;
@@ -648,8 +657,7 @@ window.__mix = 0;
     const high = Math.max(open, close) * (1 + rand() * 0.025);
     const low = Math.min(open, close) * (1 - rand() * 0.025);
     price = close;
-    const lv = rand();
-    return { vol: 0.25 + rand() * 0.7, c: LOGC[lv < 0.62 ? 0 : lv < 0.82 ? 1 : lv < 0.95 ? 2 : 3], open, close, high, low };
+    return { vol: 0.25 + rand() * 0.7, open, close, high, low };
   });
   const pMin = Math.min(...data.map((d) => d.low)), pMax = Math.max(...data.map((d) => d.high));
 
@@ -669,8 +677,11 @@ window.__mix = 0;
     if (!ctx) return;
     lastP = p;
     const light = root.getAttribute('data-theme') === 'light';
-    const UP = light ? '#15803d' : '#22c55e', DN = light ? '#c62828' : '#ef4444';
-    const gridC = light ? 'rgba(40,60,100,0.12)' : 'rgba(150,160,180,0.10)';
+    const UP = light ? '#0a8f4a' : '#00d26a', DN = light ? '#d0302a' : '#ff3b30';
+    const BAR = light ? '#0c7597' : '#38e1ff';
+    const gridC = p < 0.5
+      ? (light ? 'rgba(40,60,100,0.12)' : 'rgba(150,160,180,0.10)')
+      : (light ? 'rgba(163,90,0,0.25)' : 'rgba(255,163,26,0.22)');
     ctx.clearRect(0, 0, w, h);
     const padL = 14, padR = 54, padT = 18, padB = 24;
     const cw = (w - padL - padR) / N;
@@ -700,14 +711,14 @@ window.__mix = 0;
       const q = smooth(clamp((p - 0.12) * 1.6 - (i / N) * 0.5)); // staggered left → right
       const x = padL + i * cw + cw / 2;
       const up = d.close >= d.open;
-      const col = mixHex(d.c, up ? UP : DN, q);
+      const col = mixHex(BAR, up ? UP : DN, q);
       // eng: histogram bar from the floor; fin: candle body
       const eTop = base - d.vol * (h - padT - padB), eBot = base;
       const fTop = yP(Math.max(d.open, d.close)), fBot = Math.max(yP(Math.min(d.open, d.close)), fTop + 2);
       const top = lerp(eTop, fTop, q), bot = lerp(eBot, fBot, q);
       const bw = lerp(cw * 0.78, cw * 0.56, q);
       ctx.fillStyle = col;
-      ctx.globalAlpha = lerp(0.75, 1, q);
+      ctx.globalAlpha = lerp(0.45 + 0.55 * d.vol, 1, q);
       ctx.fillRect(x - bw / 2, top, bw, bot - top);
       // wicks grow in
       if (q > 0.02) {
@@ -723,7 +734,7 @@ window.__mix = 0;
     const lineA = smooth(clamp((p - 0.7) / 0.25));
     if (lineA > 0) {
       ctx.globalAlpha = lineA;
-      ctx.strokeStyle = light ? '#a35a00' : '#ffa31a'; ctx.lineWidth = 2;
+      ctx.strokeStyle = light ? '#1b1307' : '#ffffff'; ctx.lineWidth = 2;
       ctx.beginPath();
       data.forEach((d, i) => {
         const s = data.slice(Math.max(0, i - 4), i + 1);
@@ -804,9 +815,9 @@ window.__mix = 0;
     { t: 2017.3, v: 100, d: '2017', title: 'KVPY Fellowship',
       body: '1 of 869 recipients in the Class 11 SA stream, awarded by IISc. Attended the Vijyoshi camp at IISER Bhopal. Class X: 10/10.' },
     { t: 2018.4, v: 128, d: '2018', title: 'NDA AIR 10',
-      body: 'All India Rank 10 of 520 recommended, from 6,931 candidates selected in round 1, with no coaching. It opened a path to the Indian Air Force cockpit.' },
+      body: 'All India Rank 10 of the 520 recommended, out of 6,931 candidates selected in round 1. It meant I could have joined the Indian Air Force as a pilot.' },
     { t: 2019.5, v: 141, d: '2019', title: 'The first crossroads: engineering',
-      body: 'Chose a B.Tech in IT at NSUT over the NDA. Class XII 97%, JEE Mains top 0.834%ile of 11L+, JEE Advanced top 3.2%ile.' },
+      body: 'I chose a B.Tech in IT at NSUT over the NDA. Class XII 97%, JEE Mains top 0.834%ile of 11L+, JEE Advanced top 3.2%ile.' },
     { t: 2021.05, v: 166, d: 'Jan 2021', title: '5G Hackathon, ₹1 Lakh',
       body: 'Project SATARK picked among the Top 100 use cases, from 1,000+ entries, in the Department of Telecommunications\' 5G Hackathon.' },
     { t: 2021.2, v: 172, d: 'Mar 2021', title: 'Reply Code Challenge',
@@ -824,13 +835,13 @@ window.__mix = 0;
     { t: 2024.5, v: 318, d: '2023–25', title: '$1M+ saved · 0 → 300K events/day',
       body: 'Migrated 3PB+ of daily log ingestion across Azure regions, ran a 9PB+/day logs platform, helped build the events platform from scratch, made traffic shifts 83% faster. Bravo award twice.' },
     { t: 2025.45, v: 334, d: 'Jun 2025', title: 'IIM Ahmedabad, PGP 2025–27',
-      body: 'The deferral came due. Relentless deadlines, back-to-back submissions, and basketball in between.' },
+      body: 'I finally took up the admit I had deferred. First year was mostly deadlines and back-to-back submissions, with basketball in between.' },
     { t: 2026.25, v: 361, d: 'Apr 2026', title: 'Deutsche Bank: Investment Banking',
-      body: 'Summer internship. A steep learning curve in valuation, diligence and how to underwrite a business.' },
+      body: 'A summer internship in investment banking, where I learned a lot about valuation, diligence and how to underwrite a business.' },
     { t: 2026.5, v: 378, d: 'Jul 2026', title: 'Xceedance Scholarship',
       body: 'Merit scholarship for first-year academic performance, covering the entire second-year fee (~₹14 lakh).' },
     { t: 2026.58, v: 392, d: '2026', title: 'Campus Fund: Investment Partner',
-      body: 'Backing exceptional student founders from their earliest days. Now on the other side of the table.' },
+      body: 'I back student founders from their earliest days, this time from the other side of the table.' },
   ];
   const NOW = 2026.82;
 
