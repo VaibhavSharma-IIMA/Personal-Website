@@ -3,8 +3,75 @@
    Vanilla JS canvas/SVG animations. No dependencies.
    ========================================================= */
 
-// Shared state: 0 = engineering look, 1 = finance look. Driven by the pivot section.
-window.__mix = 0;
+// Shared state. Each pivot reports 0 → 1 as you scroll through it:
+// __mix1 (campus → engineering) and __mix2 (engineering → finance).
+// __phase = __mix1 + __mix2 runs 0 (campus) → 1 (engineering) → 2 (finance).
+window.__mix1 = 0;
+window.__mix2 = 0;
+window.__phase = 0;
+window.__updateMode = (() => {
+  const MODES = {
+    campus: { brand: '.launch', foot: 'telemetry nominal' },
+    eng: { brand: '.o11y', foot: 'all systems operational' },
+    fin: { brand: '.capital', foot: 'markets open · long builders' },
+  };
+  let mode = null;
+  return () => {
+    window.__phase = window.__mix1 + window.__mix2;
+    const m = window.__phase < 0.5 ? 'campus' : window.__phase < 1.5 ? 'eng' : 'fin';
+    if (m === mode) return;
+    mode = m;
+    document.documentElement.setAttribute('data-mode', m);
+    const brand = document.getElementById('brand-suffix'), foot = document.getElementById('foot-status');
+    if (brand) brand.textContent = MODES[m].brand;
+    if (foot) foot.textContent = MODES[m].foot;
+    window.dispatchEvent(new Event('modechange'));
+  };
+})();
+
+/* ---------- Layout variants (preview): ?honors=split|epilogue|chart&beyond=split|epilogue ---------- */
+window.__variant = (() => {
+  const q = new URLSearchParams(location.search);
+  const pick = (k, allowed, dflt) => (allowed.includes(q.get(k)) ? q.get(k) : dflt);
+  const v = {
+    honors: pick('honors', ['split', 'epilogue', 'chart'], 'split'),
+    beyond: pick('beyond', ['split', 'epilogue'], 'split'),
+  };
+  document.querySelectorAll('[data-variant]').forEach((el) => {
+    const [k, val] = el.dataset.variant.split(':');
+    el.hidden = v[k] !== val;
+  });
+  // leadership panel lives in Act I (split) or joins the personal panels in the epilogue
+  const tpl = document.getElementById('lead-template');
+  const grid = document.getElementById('beyond-grid');
+  if (tpl && grid) {
+    const panel = tpl.content.firstElementChild.cloneNode(true);
+    if (v.beyond === 'split') document.getElementById('lead-slot').appendChild(panel);
+    else grid.appendChild(panel);
+    grid.classList.toggle('three', grid.children.length === 3);
+    grid.classList.toggle('four', grid.children.length === 4);
+  }
+  // number the visible sections in reading order
+  let n = 0;
+  document.querySelectorAll('.section-index').forEach((el) => {
+    if (el.closest('[hidden]')) return;
+    n += 1;
+    el.textContent = String(n).padStart(2, '0');
+  });
+  // a small switcher so variants can be compared side by side
+  if (q.has('honors') || q.has('beyond') || q.has('preview')) {
+    const link = (h, b, label) => {
+      const on = h === v.honors && b === v.beyond;
+      return `<a href="?honors=${h}&beyond=${b}"${on ? ' class="on"' : ''}>${label}</a>`;
+    };
+    const box = document.createElement('div');
+    box.className = 'variant-switch';
+    box.innerHTML = `<b>preview</b> honors: ${link('split', v.beyond, 'split')}${link('epilogue', v.beyond, 'epilogue')}${link('chart', v.beyond, 'chart only')}`
+      + ` · beyond: ${link(v.honors, 'split', 'split')}${link(v.honors, 'epilogue', 'epilogue')}`;
+    document.body.appendChild(box);
+  }
+  return v;
+})();
 
 (() => {
   'use strict';
@@ -63,7 +130,7 @@ window.__mix = 0;
   };
   window.__fit = fit;
 
-  /* ---------- Background: log stream that becomes a market tape ---------- */
+  /* ---------- Background: telemetry, then a log stream, then a market tape ---------- */
   (() => {
     const canvas = $('log-stream');
     if (!canvas || reduced) return;
@@ -86,6 +153,18 @@ window.__mix = 0;
     window.addEventListener('themechange', () => {
       theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     });
+    const TEL = {
+      dark:  ['#3dff9a', '#38bdf8', '#fbbf24'],
+      light: ['#0a7a45', '#0369a1', '#a86a00'],
+    };
+    let pkt = 4000;
+    const telLine = () => {
+      const t = Math.floor(Math.random() * 3600);
+      const k = Math.random() < 0.7 ? 0 : Math.random() < 0.8 ? 1 : 2;
+      const tag = k === 2 ? 'RETRY' : k === 1 ? 'CMD-ACK' : 'OK';
+      pkt += 1;
+      return { k, s: `T+${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')} PKT#${pkt} ALT ${(Math.random() * 700).toFixed(1)}m TEMP ${(18 + Math.random() * 9).toFixed(1)}C ${tag}` };
+    };
     const SVC = ['events-api', 'ingest', 'router', 'query', 'kafka', 'index', 'traffic', 'emitter'];
     const MSG = ['request handled', 'flush batch', 'ack offset', 'retry backoff',
       'gc pause', 'shard rebalance', 'event emitted', 'rate limited',
@@ -109,7 +188,7 @@ window.__mix = 0;
       const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■';
       return { d: dir, s: `${rnd(SYM).padEnd(9)} ${px.padStart(9)} ${arrow} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%` };
     };
-    const line = () => ({ log: logLine(), tape: tapeLine() });
+    const line = () => ({ tel: telLine(), log: logLine(), tape: tapeLine() });
     const setup = () => {
       const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
       const fontH = 15, colW = 250;
@@ -127,9 +206,10 @@ window.__mix = 0;
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
       ctx.font = '13px "JetBrains Mono", monospace';
-      const mix = window.__mix;
+      const ph = window.__phase;
+      const wC = Math.max(0, 1 - ph), wE = Math.max(0, 1 - Math.abs(ph - 1)), wF = Math.max(0, ph - 1);
       for (const col of drops) {
-        col.y += col.speed * (1 - mix * 0.5);
+        col.y += col.speed * (1 - wF * 0.5);
         if (col.y > col.fontH) {
           col.y -= col.fontH;
           col.lines.pop();
@@ -140,13 +220,18 @@ window.__mix = 0;
           if (yy < -col.fontH || yy > h + col.fontH) continue;
           const fade = Math.max(0.08, Math.min(0.9, 1 - Math.abs(yy - h * 0.5) / (h * 0.7)));
           const ln = col.lines[k];
-          if (mix < 1) {
-            ctx.globalAlpha = fade * (1 - mix);
+          if (wC > 0) {
+            ctx.globalAlpha = fade * wC;
+            ctx.fillStyle = TEL[theme][ln.tel.k];
+            ctx.fillText(ln.tel.s, col.x, yy);
+          }
+          if (wE > 0) {
+            ctx.globalAlpha = fade * wE;
             ctx.fillStyle = PALETTE[theme][ln.log.k];
             ctx.fillText(ln.log.s, col.x, yy);
           }
-          if (mix > 0) {
-            ctx.globalAlpha = fade * mix;
+          if (wF > 0) {
+            ctx.globalAlpha = fade * wF;
             ctx.fillStyle = TAPE[theme][ln.tape.d];
             ctx.fillText(ln.tape.s, col.x, yy);
           }
@@ -292,6 +377,82 @@ window.__mix = 0;
     setInterval(update, reduced ? 3000 : 1200);
   })();
 
+  /* ---------- Hero: satellite ground track (decorative) ---------- */
+  (() => {
+    const canvas = $('groundtrack');
+    if (!canvas || reduced) return;
+    let ctx, w, h;
+    const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
+    setup();
+    window.addEventListener('resize', setup);
+    const track = (x) => h / 2 + Math.sin((x / w) * Math.PI * 4 + 0.6) * h * 0.28;
+    const GS = { x: 0.62, y: 0.62 }; // ground station position (fractions)
+    const draw = (t) => {
+      const light = document.documentElement.getAttribute('data-theme') === 'light';
+      const G = light ? '#0a7a45' : '#3dff9a', S = light ? '#0369a1' : '#38bdf8';
+      ctx.clearRect(0, 0, w, h);
+      // lat/long grid
+      ctx.fillStyle = light ? 'rgba(10,90,60,0.25)' : 'rgba(61,255,154,0.16)';
+      for (let x = 12; x < w; x += 24) for (let y = 12; y < h; y += 24) ctx.fillRect(x, y, 1.5, 1.5);
+      // predicted track
+      ctx.setLineDash([4, 6]); ctx.strokeStyle = light ? 'rgba(10,90,60,0.4)' : 'rgba(61,255,154,0.35)'; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) x === 0 ? ctx.moveTo(x, track(x)) : ctx.lineTo(x, track(x));
+      ctx.stroke(); ctx.setLineDash([]);
+      // satellite position + flown track
+      const sx = ((t / 60) % (w + 80)) - 40, sy = track(sx);
+      ctx.strokeStyle = G; ctx.lineWidth = 2; ctx.beginPath();
+      for (let x = Math.max(0, sx - 160); x <= sx; x += 3) x === Math.max(0, sx - 160) ? ctx.moveTo(x, track(x)) : ctx.lineTo(x, track(x));
+      ctx.stroke();
+      // ground station and its link when in range
+      const gx = GS.x * w, gy = GS.y * h, inRange = Math.hypot(sx - gx, sy - gy) < h * 0.55;
+      ctx.fillStyle = S; ctx.beginPath(); ctx.moveTo(gx, gy - 8); ctx.lineTo(gx - 7, gy + 5); ctx.lineTo(gx + 7, gy + 5); ctx.closePath(); ctx.fill();
+      ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      ctx.fillText('GS', gx, gy + 18);
+      if (inRange) {
+        ctx.strokeStyle = S; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t / 120); ctx.setLineDash([2, 4]);
+        ctx.beginPath(); ctx.moveTo(gx, gy - 8); ctx.lineTo(sx, sy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
+      // footprint + satellite
+      ctx.strokeStyle = G; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillStyle = G; ctx.shadowColor = G; ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillText(inRange ? 'LINK · RX' : 'NO LINK', sx, sy - 14);
+      requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+  })();
+
+  /* ---------- Hero: simulated CanSat telemetry ---------- */
+  (() => {
+    const alt = $('t-alt'), vel = $('t-vel'), temp = $('t-temp'), loss = $('t-loss'), spark = $('t-spark');
+    if (!alt) return;
+    let a = 700, tC = 24, sctx, sw, sh;
+    const hist = [];
+    const setupSpark = () => { if (!spark || reduced) return; const d = fit(spark); sctx = d.ctx; sw = d.w; sh = d.h; };
+    setupSpark();
+    window.addEventListener('resize', setupSpark);
+    const update = () => {
+      const v = 5 + Math.random() * 2; // parachute descent, m/s
+      a -= v * 1.2;
+      if (a <= 0) a = 700; // next drop
+      tC = Math.max(16, Math.min(31, tC + (Math.random() - 0.5) * 0.6));
+      alt.textContent = a.toFixed(0);
+      vel.textContent = v.toFixed(1);
+      temp.textContent = tC.toFixed(1);
+      loss.textContent = '0.0';
+      hist.push(a); if (hist.length > 60) hist.shift();
+      if (!sctx || hist.length < 2) return;
+      const light = document.documentElement.getAttribute('data-theme') === 'light';
+      sctx.clearRect(0, 0, sw, sh);
+      sctx.beginPath();
+      hist.forEach((y, i) => { const x = (i / (hist.length - 1)) * sw, yy = sh - (y / 700) * sh * 0.85 - sh * 0.05; i ? sctx.lineTo(x, yy) : sctx.moveTo(x, yy); });
+      sctx.strokeStyle = light ? '#0a7a45' : '#3dff9a'; sctx.lineWidth = 1.5; sctx.stroke();
+    };
+    update();
+    setInterval(update, reduced ? 3000 : 1200);
+  })();
+
   /* ---------- Focus card mini-visuals ---------- */
   const miniCanvas = (host) => {
     const c = document.createElement('canvas');
@@ -420,8 +581,6 @@ window.__mix = 0;
         description: '"Best Hack for Social Good" out of 200+ at CuseHacks\'21 and "Best Solo Hack" out of 50+ at ApolloHacks\'21.' },
       { name: 'reply-code-challenge', owner: 'Reply · 2021', tag: 'coding', prize: 'India #10 · World #106',
         description: 'A team coding challenge with 2,000+ teams from around the world.' },
-      { name: 'pm-dissect', owner: 'ProdMan Club, IIM A', tag: 'product', prize: 'Top 25 / 99 teams',
-        description: 'Shortlisted for the semi-finals of the product management case competition, out of 219 participants.' },
     ];
     grid.innerHTML = items.map((r) => `
       <article class="work-card">
@@ -439,9 +598,9 @@ window.__mix = 0;
     if (reduced || !('IntersectionObserver' in window)) return;
     const solo = ['.hero-inner', '.pipeline-wrap', '.metrics-bar', '.section-head',
       '.about-copy', '.timeline', '.explorer', '.edu-strip', '.team-strip', '.contact-copy',
-      '.termsheet', '.quote', '.holdings-wrap', '.term-bar'];
+      '.termsheet', '.quote', '.holdings-wrap', '.term-bar', '.act-tag'];
     document.querySelectorAll(solo.join(',')).forEach((el) => el.classList.add('reveal'));
-    const groups = ['.impact', '.cards', '.stack-grid', '.work-grid', '.beyond-grid', '.tombs'];
+    const groups = ['.impact', '.cards', '.stack-grid', '.work-grid', '.beyond-grid', '.tombs', '.edu-grid', '.mission-grid'];
     groups.forEach((sel) => {
       document.querySelectorAll(sel).forEach((g) => {
         [...g.children].forEach((c, i) => {
@@ -529,15 +688,6 @@ window.__mix = 0;
         'Wrote 4+ documents on database read and write costs for mid-tier API endpoints across the Groups platform',
         'Prototyped automation projected to cut the time for API cost analysis across the org by 40%',
         'Converted to a pre-placement offer' ] },
-    { ts: '2019 → 2023', yr: 2021, dur: '4 yrs', level: 'DEBUG', company: 'NSUT', role: 'CanSat Team Leader · B.Tech IT',
-      tags: ['college'],
-      msg: 'Intl Rank 2 / 200+ at CanSat 2021; Dept Rank 3',
-      details: [
-        'Led a 10-member cross-functional team to build a rocket-launched satellite that met all its descent objectives',
-        'International Rank 2 of 200+ teams at CanSat, sponsored by NASA, Lockheed Martin and the US Naval Research Lab',
-        'Earned 100% practical and 100% documentation scores, evaluated by NASA and Lockheed Martin scientists',
-        'Took a leadership role as a sophomore that was normally reserved for seniors',
-        'B.Tech in Information Technology, 8.95/10, Department Rank 3/147; CVSPK merit scholar (top 5% of 1,280+)' ] },
   ];
 
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -572,7 +722,6 @@ window.__mix = 0;
     events: '\n| where platform == "events"',
     reliability: '\n| where tags has "reliability"',
     internship: '\n| where tags has "internship"',
-    college: '\n| where org == "NSUT"',
   };
   const applyFilter = (f) => {
     let shown = 0;
@@ -597,7 +746,7 @@ window.__mix = 0;
   // histogram: detail lines logged per year, oldest -> newest
   const histo = $('histo');
   if (histo) {
-    const years = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
+    const years = [2022, 2023, 2024, 2025];
     const count = (y) => CAREER.filter((e) => e.yr === y).reduce((n, e) => n + e.details.length, 0);
     const max = Math.max(...years.map(count));
     histo.innerHTML = years.map((y) => {
@@ -613,8 +762,8 @@ window.__mix = 0;
 (() => {
   'use strict';
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const wrap = document.getElementById('impact');
-  if (!wrap) return;
+  const wraps = [...document.querySelectorAll('.impact')];
+  if (!wraps.length) return;
   const fmt = (v, dec, prefix, suffix) =>
     `${prefix}${dec ? v.toFixed(dec) : Math.round(v).toLocaleString('en-US')}${suffix}`;
   const run = (el) => {
@@ -634,7 +783,7 @@ window.__mix = 0;
     };
     requestAnimationFrame(step);
   };
-  const stats = [...wrap.querySelectorAll('.stat')];
+  const stats = wraps.flatMap((w) => [...w.querySelectorAll('.stat')]);
   if (reduced || !('IntersectionObserver' in window)) { stats.forEach(run); return; }
   const io = new IntersectionObserver((entries) => {
     entries.forEach((e) => { if (e.isIntersecting) { run(e.target); io.unobserve(e.target); } });
@@ -654,7 +803,6 @@ window.__mix = 0;
   if (!section || !canvas) return;
   const root = document.documentElement;
   const bar = $('pivot-bar'), readout = $('pivot-readout'), kicker = $('pivot-kicker');
-  const brand = $('brand-suffix'), foot = $('foot-status');
 
   const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
   const smooth = (t) => t * t * (3 - 2 * t);
@@ -673,6 +821,7 @@ window.__mix = 0;
     price = close;
     return { vol: 0.25 + rand() * 0.7, open, close, high, low };
   });
+  window.__pivotVols = data.map((d) => d.vol); // pivot 1 ends on these same bars
   const pMin = Math.min(...data.map((d) => d.low)), pMax = Math.max(...data.map((d) => d.high));
 
   let ctx, w, h;
@@ -787,16 +936,6 @@ window.__mix = 0;
     ctx.globalAlpha = 1;
   };
 
-  let mode = 'eng';
-  const setMode = (m) => {
-    if (m === mode) return;
-    mode = m;
-    root.setAttribute('data-mode', m);
-    if (brand) brand.textContent = m === 'fin' ? '.capital' : '.o11y';
-    if (foot) foot.textContent = m === 'fin' ? 'markets open · long builders' : 'all systems operational';
-    window.dispatchEvent(new Event('modechange'));
-  };
-
   const update = () => {
     const r = section.getBoundingClientRect();
     const vh = window.innerHeight;
@@ -804,8 +943,8 @@ window.__mix = 0;
     const p = reduced
       ? (r.top + r.height / 2 < vh / 2 ? 1 : 0)
       : clamp(-r.top / total);
-    window.__mix = reduced ? p : smooth(clamp((p - 0.3) / 0.4));
-    setMode(window.__mix >= 0.5 ? 'fin' : 'eng');
+    window.__mix2 = reduced ? p : smooth(clamp((p - 0.3) / 0.4));
+    window.__updateMode();
     if (bar) bar.style.width = `${(p * 100).toFixed(1)}%`;
     if (readout) {
       readout.innerHTML = p < 0.5
@@ -827,6 +966,122 @@ window.__mix = 0;
 })();
 
 /* =========================================================
+   Pivot 1: the CanSat flight profile (telemetry packets) drops
+   into daily log-volume bars, switching campus → engineering
+   ========================================================= */
+(() => {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (id) => document.getElementById(id);
+  const section = $('liftoff'), canvas = $('liftoff-canvas');
+  if (!section || !canvas) return;
+  const root = document.documentElement;
+  const bar = $('liftoff-bar'), readout = $('liftoff-readout'), kicker = $('liftoff-kicker');
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const vols = window.__pivotVols || Array.from({ length: 32 }, () => 0.5);
+  const N = vols.length;
+  // illustrative flight: fast climb on the rocket, then a slow parachute descent
+  const altAt = (x) => (x < 0.2 ? Math.sin((x / 0.2) * Math.PI / 2) : 1 - Math.pow((x - 0.2) / 0.8, 1.15));
+  const hexToRgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const mixHex = (a, b, t) => { const A = hexToRgb(a), B = hexToRgb(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`; };
+
+  let ctx, w, h, lastP = 0;
+  const setup = () => { const d = window.__fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
+  setup();
+
+  const draw = (p) => {
+    if (!ctx) return;
+    lastP = p;
+    const light = root.getAttribute('data-theme') === 'light';
+    const GREEN = light ? '#0a7a45' : '#3dff9a', CYAN = light ? '#0c7597' : '#38e1ff';
+    const txt = light ? '#101a2e' : '#e6ecf5', sub = light ? '#47536b' : '#8a97ad';
+    ctx.clearRect(0, 0, w, h);
+    const padL = 14, padR = 54, padT = 40, padB = 26;
+    const cw = (w - padL - padR) / N, base = h - padB, span = h - padT - padB;
+    const k = smooth(clamp((p - 0.45) / 0.1));
+
+    ctx.strokeStyle = k < 0.5 ? (light ? 'rgba(10,90,60,0.18)' : 'rgba(61,255,154,0.12)') : (light ? 'rgba(40,60,100,0.12)' : 'rgba(150,160,180,0.10)');
+    ctx.lineWidth = 1;
+    for (let g = 0; g <= 4; g++) { const y = padT + (g / 4) * span; ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke(); }
+    ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'left'; ctx.fillStyle = sub; ctx.globalAlpha = 0.8;
+    for (let g = 0; g <= 4; g++) {
+      const y = padT + (g / 4) * span;
+      ctx.fillText(p < 0.5 ? `${Math.round(lerp(700, 0, g / 4))} m` : `${Math.round(lerp(9, 0, g / 4))} PB`, w - padR + 8, y + 3);
+    }
+    ctx.globalAlpha = 1;
+
+    const legend = (alpha, title, items, xLabel) => {
+      if (alpha <= 0.01) return;
+      ctx.globalAlpha = alpha; ctx.textAlign = 'left';
+      ctx.font = '600 12px "JetBrains Mono", monospace'; ctx.fillStyle = txt; ctx.fillText(title, padL + 4, 18);
+      ctx.font = '10px "JetBrains Mono", monospace';
+      let lx = padL + 4;
+      items.forEach(([kind, color, label]) => {
+        ctx.fillStyle = color;
+        if (kind === 'dot') { ctx.beginPath(); ctx.arc(lx + 6, 30, 3.5, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(lx + 2, 25, 8, 10);
+        ctx.fillStyle = sub; ctx.fillText(label, lx + 17, 34);
+        lx += 17 + ctx.measureText(label).width + 16;
+      });
+      ctx.fillText(xLabel, padL + 4, h - 8);
+      ctx.globalAlpha = 1;
+    };
+    legend(1 - k, 'Altitude (m) · CanSat flight profile (illustrative)', [['dot', GREEN, 'one telemetry packet']], 'mission time →');
+    legend(k, 'Daily log volume (PB)', [['bar', CYAN, 'one bar = one day of ingestion']], 'days →');
+
+    // the flight path fades as its packets drop into bars
+    const pathA = 1 - smooth(clamp(p * 2.2));
+    if (pathA > 0) {
+      ctx.globalAlpha = pathA * 0.6; ctx.strokeStyle = GREEN; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < N; i++) { const x = padL + i * cw + cw / 2, y = base - altAt(i / (N - 1)) * span; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    for (let i = 0; i < N; i++) {
+      const q = smooth(clamp((p - 0.12) * 1.6 - (i / N) * 0.5));
+      const x = padL + i * cw + cw / 2;
+      const yA = base - altAt(i / (N - 1)) * span;
+      const col = mixHex(GREEN, CYAN, q);
+      const top = lerp(yA, base - vols[i] * span, q), bot = lerp(yA, base, q);
+      const bw = lerp(4, cw * 0.78, q);
+      ctx.fillStyle = col;
+      if (q < 0.05) {
+        ctx.shadowColor = col; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(x, yA, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      } else {
+        ctx.globalAlpha = lerp(1, 0.45 + 0.55 * vols[i], q);
+        ctx.fillRect(x - bw / 2, top, bw, Math.max(3, bot - top));
+        ctx.globalAlpha = 1;
+      }
+    }
+  };
+
+  const update = () => {
+    const r = section.getBoundingClientRect(), vh = window.innerHeight;
+    const p = reduced ? (r.top + r.height / 2 < vh / 2 ? 1 : 0) : clamp(-r.top / Math.max(1, r.height - vh));
+    window.__mix1 = reduced ? p : smooth(clamp((p - 0.3) / 0.4));
+    window.__updateMode();
+    if (bar) bar.style.width = `${(p * 100).toFixed(1)}%`;
+    if (readout) {
+      readout.innerHTML = p < 0.5
+        ? `mode: <b>mission control</b> · ALT ${Math.round(700 * (1 - p * 2))} m`
+        : `mode: <b>engineering</b> · ingest ${(9 * (p - 0.5) * 2).toFixed(1)} PB/day`;
+    }
+    if (kicker) kicker.textContent = p < 0.5 ? 'CANSAT-2021 · DOWNLINK' : '$ tail -f /var/log/linkedin';
+    draw(reduced ? 1 : p);
+  };
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { update(); ticking = false; });
+  }, { passive: true });
+  window.addEventListener('resize', () => { setup(); update(); });
+  window.addEventListener('themechange', () => draw(lastP));
+  update();
+})();
+
+/* =========================================================
    Gentle heading snap: when scrolling stops with a heading within
    SNAP_PX of its resting spot under the nav, glide it into place
    ========================================================= */
@@ -843,6 +1098,7 @@ window.__mix = 0;
     const line = nav.getBoundingClientRect().height + (GAP);
     let best = null;
     targets.forEach((t) => {
+      if (t.closest('[hidden]')) return;
       const d = t.getBoundingClientRect().top - (t.classList.contains('snap-mark') ? line - GAP : line);
       if (Math.abs(d) <= SNAP_PX && Math.abs(d) > 2 && (!best || Math.abs(d) < Math.abs(best))) best = d;
     });
@@ -910,6 +1166,24 @@ window.__mix = 0;
       body: 'I back student founders from their earliest days, this time from the other side of the table.' },
   ];
   const NOW = 2026.82;
+  if (window.__variant && window.__variant.honors === 'chart') {
+    [
+      { t: 2020.05, d: 'Jan 2020', title: "Best Delegate, AMIMUN'20",
+        body: "Best Delegate out of 100+ at AMIMUN'20, after a Special Mention at SYMUNC'19." },
+      { t: 2022.6, d: '2022', title: 'CVSPK Scholarship',
+        body: 'Top 5% of a batch of 1,280+ at NSUT, with a full tuition waiver in two of four years.' },
+      { t: 2025.85, d: '2025', title: 'PM Dissect semi-finalist',
+        body: 'Top 25 of 99 teams (219 participants) in the ProdMan Club case competition at IIM A.' },
+      { t: 2026.1, d: '2026', title: "Silver at Sangharsh'26",
+        body: 'Basketball silver at the inter-IIM sports tournament.' },
+    ].forEach((e) => EVENTS.push(e));
+    EVENTS.sort((a, b) => a.t - b.t);
+    EVENTS.forEach((e, i) => {
+      if (e.v !== undefined) return;
+      const prev = EVENTS[i - 1], next = EVENTS.slice(i + 1).find((x) => x.v !== undefined);
+      e.v = prev.v + (next.v - prev.v) * ((e.t - prev.t) / (next.t - prev.t));
+    });
+  }
 
   // monthly series through the events with small seeded wiggles
   let seed = 42;
@@ -1012,28 +1286,32 @@ window.__mix = 0;
 })();
 
 /* =========================================================
-   Holdings: honors as a portfolio table
+   Honors tables: one per act (split) or all in the epilogue
    ========================================================= */
 (() => {
-  const body = document.querySelector('#holdings tbody');
-  if (!body) return;
   const H = [
-    ['CNST', 'CanSat 2021', 'NASA · Lockheed Martin · US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
-    ['NDA', 'NDA-2 Exam 2018', '520 recommended of 6,931 R1-selected', 'AIR 10', 'Defence', '2018'],
-    ['CAT', 'CAT 2022', 'VARC 99.97 %ile · 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
-    ['XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund · full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
-    ['KVPY', 'KVPY Fellowship', 'IISc · Class 11 SA stream', '1 / 869', 'Science', '2017'],
-    ['RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10 · World #106', 'Coding', '2021'],
-    ['JEE', 'JEE Mains / Advanced', '11L+ / 1.7L+ candidates', 'Top 0.834% / 3.2%', 'Engineering', '2019'],
-    ['CVSPK', 'CVSPK Scholarship', 'NSUT · top 5% of 1,280+', '100% tuition waiver', 'Merit', '2022'],
-    ['NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10 · Rank 3/147', 'Academics', '2023'],
-    ['BRVO', 'Bravo Award ×2', 'LinkedIn · incident response capabilities', 'Sole recipient of 4', 'Engineering', '2023–25'],
-    ['MUN', 'AMIMUN\'20 · SYMUNC\'19', 'Model United Nations', 'Best Delegate · Special Mention', 'Debate', '2019–20'],
-    ['SNGR', 'Sangharsh\'26', 'Inter-IIM sports tournament', 'Silver · Basketball', 'Sport', '2026'],
+    // act, code, honor, detail, result, field, year
+    ['campus', 'NDA', 'NDA-2 Exam 2018', '520 recommended of 6,931 R1-selected', 'AIR 10', 'Defence', '2018'],
+    ['campus', 'KVPY', 'KVPY Fellowship', 'IISc · Class 11 SA stream', '1 / 869', 'Science', '2017'],
+    ['campus', 'JEE', 'JEE Mains / Advanced', '11L+ / 1.7L+ candidates', 'Top 0.834% / 3.2%', 'Engineering', '2019'],
+    ['campus', 'CVSPK', 'CVSPK Scholarship', 'NSUT · top 5% of 1,280+', '100% tuition waiver', 'Merit', '2022'],
+    ['campus', 'RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10 · World #106', 'Coding', '2021'],
+    ['campus', 'MUN', "AMIMUN'20 · SYMUNC'19", 'Model United Nations', 'Best Delegate · Special Mention', 'Debate', '2019–20'],
+    ['other', 'CNST', 'CanSat 2021', 'NASA · Lockheed Martin · US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
+    ['other', 'NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10 · Rank 3/147', 'Academics', '2023'],
+    ['other', 'BRVO', 'Bravo Award ×2', 'LinkedIn · incident response capabilities', 'Sole recipient among 4', 'Engineering', '2023–25'],
+    ['fin', 'CAT', 'CAT 2022', 'VARC 99.97 %ile · 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
+    ['fin', 'XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund · full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
+    ['fin', 'PMD', 'PM Dissect', 'ProdMan Club, IIM A · 99 teams, 219 participants', 'Top 25 · semi-finalist', 'Product', '2025'],
   ];
-  body.innerHTML = H.map(([t, n, s, pos, f, y]) => `
-    <tr><td class="h-tkr">${t}</td><td class="h-name">${n}<small>${s}</small></td>
-    <td class="h-up">▲ ${pos}</td><td>${f}</td><td class="h-yr">${y}</td></tr>`).join('');
+  document.querySelectorAll('table.holdings[data-act]').forEach((table) => {
+    const act = table.dataset.act;
+    const rows = act === 'all' ? H : H.filter((r) => r[0] === act);
+    table.querySelector('thead').innerHTML = `<tr>${table.dataset.cols.split(',').map((c) => `<th>${c}</th>`).join('')}</tr>`;
+    table.querySelector('tbody').innerHTML = rows.map(([, t, n, sub, pos, f, y]) => `
+      <tr><td class="h-tkr">${t}</td><td class="h-name">${n}<small>${sub}</small></td>
+      <td class="h-up">▲ ${pos}</td><td>${f}</td><td class="h-yr">${y}</td></tr>`).join('');
+  });
 })();
 
 /* =========================================================

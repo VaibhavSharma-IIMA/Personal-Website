@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <title>Vaibhav Sharma · Engineer turned Investor</title>
-  <meta name="description" content="Vaibhav Sharma · ex-Software Engineer (Observability) at LinkedIn, IB Summer Intern at Deutsche Bank, Investment Partner at Campus Fund, MBA candidate at IIM Ahmedabad." />
+  <meta name="description" content="Vaibhav Sharma · ex-Software Engineer (Observability) at LinkedIn, ex-Investment Banking Summer Intern at Deutsche Bank, Investment Partner at Campus Fund, MBA candidate at IIM Ahmedabad." />
   <meta name="author" content="Vaibhav Sharma" />
 
   <!-- Open Graph -->
@@ -27,14 +27,14 @@
         if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', t);
       } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
-      document.documentElement.setAttribute('data-mode', 'eng');
+      document.documentElement.setAttribute('data-mode', 'campus');
     })();
   </script>
 </head>
 <body>
   <a class="skip-link" href="#top">Skip to content</a>
 
-  <!-- Live backdrop: log stream that turns into a market tape past the pivot -->
+  <!-- Live backdrop: telemetry, then a log stream, then a market tape -->
   <canvas id="log-stream" aria-hidden="true"></canvas>
   <div class="scanline" aria-hidden="true"></div>
 
@@ -42,16 +42,14 @@
   <header class="nav">
     <a class="brand" href="#top" aria-label="Home">
       <span class="brand-dot" aria-hidden="true"></span>
-      <span class="brand-text">vaibhav<span class="accent" id="brand-suffix">.o11y</span></span>
+      <span class="brand-text">vaibhav<span class="accent" id="brand-suffix">.launch</span></span>
     </a>
     <nav class="nav-links" aria-label="Primary">
       <a href="#about">About</a>
-      <a href="#experience">Career</a>
-      <a href="#work">Builds</a>
-      <a href="#pivot">Pivot</a>
-      <a href="#deals">Deals</a>
-      <a href="#chart">Chart</a>
-      <a href="#honors">Honors</a>
+      <a href="#campus">Campus</a>
+      <a href="#experience">LinkedIn</a>
+      <a href="#deals">Finance</a>
+      <a href="#chart">Journey</a>
       <a href="#contact" class="nav-cta">Pitch me</a>
     </nav>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme" title="Toggle light/dark theme">
@@ -83,27 +81,27 @@
           backing student founders <span class="nowrap"><span class="at">@ Campus Fund</span></span>.
         </p>
         <div class="hero-cta">
-          <a class="btn btn-primary" href="#experience">View career log</a>
-          <a class="btn btn-ghost" href="#pivot">Skip to the pivot ↓</a>
+          <a class="btn btn-primary" href="#about">Start the story ↓</a>
+          <a class="btn btn-ghost" href="#contact">Pitch me</a>
         </div>
       </div>
 
-      <!-- Live pipeline visualization -->
+      <!-- Ground-track visual (decorative) -->
       <div class="pipeline-wrap" aria-hidden="true">
-        <canvas id="pipeline"></canvas>
-        <div class="pipeline-label">event pipeline · demo</div>
+        <canvas id="groundtrack"></canvas>
+        <div class="pipeline-label">ground track · demo</div>
       </div>
 
-      <!-- Simulated throughput ticker (NOT real metrics) -->
+      <!-- Simulated telemetry readout (NOT real data) -->
       <div class="metrics-bar" aria-hidden="true">
         <div class="metrics-flag" title="These figures are randomly generated for illustration only.">
-          <span class="mf-dot"></span> simulated · not real metrics
+          <span class="mf-dot"></span> simulated · not real telemetry
         </div>
-        <div class="metric"><span class="m-label">ingest</span><span class="m-val" id="m-ingest">0</span><span class="m-unit">events/s</span></div>
-        <div class="metric"><span class="m-label">p99 latency</span><span class="m-val" id="m-latency">0</span><span class="m-unit">ms</span></div>
-        <div class="metric"><span class="m-label">log volume</span><span class="m-val" id="m-volume">0</span><span class="m-unit">TB/hr</span></div>
-        <div class="metric"><span class="m-label">errors</span><span class="m-val" id="m-errors">0.00</span><span class="m-unit">%</span></div>
-        <canvas id="sparkline" class="sparkline"></canvas>
+        <div class="metric"><span class="m-label">altitude</span><span class="m-val" id="t-alt">0</span><span class="m-unit">m</span></div>
+        <div class="metric"><span class="m-label">descent rate</span><span class="m-val" id="t-vel">0</span><span class="m-unit">m/s</span></div>
+        <div class="metric"><span class="m-label">payload temp</span><span class="m-val" id="t-temp">0</span><span class="m-unit">°C</span></div>
+        <div class="metric"><span class="m-label">packet loss</span><span class="m-val" id="t-loss">0.0</span><span class="m-unit">%</span></div>
+        <canvas id="t-spark" class="sparkline"></canvas>
       </div>
     </section>
 
@@ -162,8 +160,144 @@
       </div>
     </section>
 
+    <!-- ===================== ACT I · CAMPUS ===================== -->
+    <section id="campus" class="section">
+      <div class="act-tag">ACT I · Campus · 2017 – 2023</div>
+      <div class="section-head">
+        <span class="section-index">02</span>
+        <h2>Flight record <span class="head-sub">// education</span></h2>
+      </div>
+      <div class="edu-grid">
+        <article class="hud edu-card">
+          <div class="hud-k">STAGE 2 · 2019 – 2023</div>
+          <h3>B.Tech, Information Technology</h3>
+          <p class="edu-org">Netaji Subhas University of Technology, Delhi</p>
+          <div class="edu-stats">
+            <div><b>8.95</b><span>CGPA / 10</span></div>
+            <div><b>3 / 147</b><span>department rank</span></div>
+            <div><b>Top 5%</b><span>CVSPK merit scholar</span></div>
+          </div>
+          <p>CVSPK Scholarship for ranking in the top 5% of a batch of 1,280+, which waived my tuition fully in two of my four years.</p>
+        </article>
+        <article class="hud edu-card">
+          <div class="hud-k">STAGE 1 · 2017 – 2019</div>
+          <h3>School</h3>
+          <p class="edu-org">Mount Carmel School, Delhi · CBSE</p>
+          <div class="edu-stats">
+            <div><b>97%</b><span>Class XII</span></div>
+            <div><b>10 / 10</b><span>Class X</span></div>
+            <div><b>1 / 869</b><span>KVPY fellow</span></div>
+          </div>
+          <p>Scored 95 or more in all five Class XII subjects. Before college I also cleared the NDA exam with All India Rank 10 and was a KVPY Fellow, awarded by IISc.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="cansat" class="section">
+      <div class="section-head">
+        <span class="section-index">03</span>
+        <h2>Mission summary <span class="head-sub">// CanSat 2021 · Team GAGAN</span></h2>
+      </div>
+      <div class="impact" id="impact-cansat">
+        <div class="stat" data-target="2" data-prefix="#" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">international rank <span class="stat-note">of 200+ teams</span></div>
+        </div>
+        <div class="stat" data-target="99.17" data-suffix="%" data-dec="2">
+          <div class="stat-val">0</div>
+          <div class="stat-label">final score</div>
+        </div>
+        <div class="stat" data-target="10" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">people on the team <span class="stat-note">led as a sophomore</span></div>
+        </div>
+        <div class="stat" data-target="100" data-suffix="%" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">practical score <span class="stat-note">live satellite demo</span></div>
+        </div>
+        <div class="stat" data-target="100" data-suffix="%" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">documentation score <span class="stat-note">200+ slide review</span></div>
+        </div>
+        <div class="stat" data-target="0" data-suffix="%" data-dec="0">
+          <div class="stat-val">0</div>
+          <div class="stat-label">packet loss <span class="stat-note">our ground station</span></div>
+        </div>
+      </div>
+      <div class="mission-grid">
+        <div class="hud mission-copy">
+          <div class="hud-k">MISSION</div>
+          <p>CanSat is a student competition run by the American Astronautical Society and sponsored by NASA, Lockheed
+             Martin and the US Naval Research Laboratory. Teams design a small satellite, launch it on a rocket, and have
+             it meet a set of descent objectives on the way down. Our NSUT team, Team GAGAN, met all of them and finished
+             second in the world.</p>
+          <p>I joined the team in my first year and led it in my second, a role the university usually gave to seniors.
+             NASA and Lockheed Martin scientists evaluated the live satellite demonstration.</p>
+        </div>
+        <div class="hud mission-copy">
+          <div class="hud-k">GROUND STATION · MY BUILD</div>
+          <ul class="mission-list">
+            <li>Built the ground station software from scratch for two-way communication with the satellite and its payloads</li>
+            <li>0% packet loss and 100% of commands received in the practical evaluation, which lifted the team score by 30%</li>
+            <li>Multithreaded the GUI to bring data latency down to 1s and cut space complexity by 40%</li>
+            <li>In CanSat 2020, the year before, the team reached International Rank 17 in round 1</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="work" class="section">
+      <div class="section-head">
+        <span class="section-index">04</span>
+        <h2>Side missions <span class="head-sub">// hackathons &amp; competitions</span></h2>
+      </div>
+      <div class="work-grid" id="work-grid"></div>
+    </section>
+
+    <section id="honors-campus" class="section" data-variant="honors:split">
+      <div class="section-head">
+        <span class="section-index">05</span>
+        <h2>Badges <span class="head-sub">// exams &amp; scholarships</span></h2>
+      </div>
+      <div class="holdings-wrap">
+        <table class="holdings" data-act="campus" data-cols="Code,Honor,Result,Field,Year">
+          <thead></thead><tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="leadership" class="section" data-variant="beyond:split">
+      <div class="section-head">
+        <span class="section-index">06</span>
+        <h2>Off the launchpad <span class="head-sub">// leadership on campus</span></h2>
+      </div>
+      <div class="beyond-grid one" id="lead-slot"></div>
+    </section>
+
+    <!-- PIVOT 1: campus -> engineering -->
+    <section id="liftoff" class="pivot" aria-labelledby="liftoff-title">
+      <span class="snap-mark" aria-hidden="true"></span>
+      <div class="pivot-sticky">
+        <div class="pivot-head">
+          <div>
+            <div class="pivot-kicker" id="liftoff-kicker">CANSAT-2021 · DOWNLINK</div>
+            <h2 class="pivot-title" id="liftoff-title">From <span class="from-c">ground station</span> to <span class="to-c">data centre</span></h2>
+          </div>
+          <div class="pivot-readout" id="liftoff-readout">mode: <b>mission control</b></div>
+        </div>
+        <canvas id="liftoff-canvas" aria-hidden="true"></canvas>
+        <p class="pivot-copy">
+          The CanSat ground station was the first time I built software that pulled data from a live system. At
+          LinkedIn the data got a lot bigger.
+        </p>
+        <div class="pivot-progress liftoff-progress" aria-hidden="true"><span id="liftoff-bar"></span></div>
+      </div>
+    </section>
+
+    <!-- ===================== ACT II · LINKEDIN ===================== -->
     <!-- EXPERIENCE : log explorer -->
     <section id="experience" class="section">
+      <div class="act-tag">ACT II · LinkedIn · 2022 – 2025</div>
       <div class="section-head">
         <span class="section-index">02</span>
         <h2>Career log <span class="head-sub">// grep -r "vaibhav" ./linkedin</span></h2>
@@ -223,7 +357,6 @@
           <button class="filter" data-f="events" aria-pressed="false">events</button>
           <button class="filter" data-f="reliability" aria-pressed="false">reliability</button>
           <button class="filter" data-f="internship" aria-pressed="false">internship</button>
-          <button class="filter" data-f="college" aria-pressed="false">college</button>
         </div>
 
         <!-- tenure histogram -->
@@ -247,13 +380,6 @@
         <div class="query-stats" id="query-stats"></div>
       </div>
 
-      <!-- education strip -->
-      <div class="edu-strip">
-        <span class="edu-key">EDU</span>
-        <span class="edu-item"><strong>PGP (MBA)</strong> · IIM Ahmedabad · 2025–27</span>
-        <span class="edu-item"><strong>B.Tech IT</strong> · NSUT Delhi · 8.95/10 · Dept Rank 3/147 · 2023</span>
-        <span class="edu-item">Mount Carmel School, Delhi · XII 97% · X 10/10</span>
-      </div>
     </section>
 
     <!-- FOCUS -->
@@ -261,6 +387,24 @@
       <div class="section-head">
         <span class="section-index">03</span>
         <h2>What I built on</h2>
+      </div>
+      <!-- Simulated views of the platforms (decorative) -->
+      <!-- Live pipeline visualization -->
+      <div class="pipeline-wrap" aria-hidden="true">
+        <canvas id="pipeline"></canvas>
+        <div class="pipeline-label">event pipeline · demo</div>
+      </div>
+
+      <!-- Simulated throughput ticker (NOT real metrics) -->
+      <div class="metrics-bar" aria-hidden="true">
+        <div class="metrics-flag" title="These figures are randomly generated for illustration only.">
+          <span class="mf-dot"></span> simulated · not real metrics
+        </div>
+        <div class="metric"><span class="m-label">ingest</span><span class="m-val" id="m-ingest">0</span><span class="m-unit">events/s</span></div>
+        <div class="metric"><span class="m-label">p99 latency</span><span class="m-val" id="m-latency">0</span><span class="m-unit">ms</span></div>
+        <div class="metric"><span class="m-label">log volume</span><span class="m-val" id="m-volume">0</span><span class="m-unit">TB/hr</span></div>
+        <div class="metric"><span class="m-label">errors</span><span class="m-val" id="m-errors">0.00</span><span class="m-unit">%</span></div>
+        <canvas id="sparkline" class="sparkline"></canvas>
       </div>
       <div class="cards">
         <article class="card card-log">
@@ -298,16 +442,7 @@
       <div class="stack-grid" id="stack-grid"></div>
     </section>
 
-    <!-- WORK -->
-    <section id="work" class="section">
-      <div class="section-head">
-        <span class="section-index">05</span>
-        <h2>Traces <span class="head-sub">// builds, hackathons &amp; competitions</span></h2>
-      </div>
-      <div class="work-grid" id="work-grid"></div>
-    </section>
-
-    <!-- THE PIVOT -->
+    <!-- PIVOT 2: engineering -> finance -->
     <section id="pivot" class="pivot" aria-labelledby="pivot-title">
       <span class="snap-mark" aria-hidden="true"></span>
       <div class="pivot-sticky">
@@ -327,36 +462,23 @@
       </div>
     </section>
 
+    <!-- ===================== ACT III · MBA & FINANCE ===================== -->
     <!-- DEALS -->
     <section id="deals" class="section">
       <div class="term-bar" aria-hidden="true">
         <span class="term-cmd">VBHV &lt;Equity&gt; DES<span class="go">GO</span></span>
         <span class="fkey"><b>1)</b>Deals</span>
-        <span class="fkey"><b>2)</b>Chart</span>
-        <span class="fkey"><b>3)</b>Holdings</span>
+        <span class="fkey"><b>2)</b>Holdings</span>
+        <span class="fkey"><b>3)</b>Chart</span>
         <span class="fkey"><b>4)</b>Terms</span>
         <span class="term-clock" id="term-clock">--:--:-- IST</span>
       </div>
+      <div class="act-tag">ACT III · MBA &amp; finance · 2025 – now</div>
       <div class="section-head">
         <span class="section-index fin-index">06</span>
         <h2>Tombstones <span class="head-sub">// deals closed &amp; positions open</span></h2>
       </div>
       <div class="tombs">
-        <article class="tomb">
-          <span class="tomb-status closed">CLOSED</span>
-          <div class="tomb-org">LinkedIn</div>
-          <div class="tomb-role">Software Engineer · Observability</div>
-          <div class="tomb-big">$1M+</div>
-          <div class="tomb-big-l">annual savings delivered</div>
-          <div class="tomb-rule"></div>
-          <ul>
-            <li>SRE intern → PPO, 2022</li>
-            <li>9PB+/day logs platform</li>
-            <li>Events platform, 0 → 300K/day</li>
-            <li>2× Bravo award</li>
-          </ul>
-          <div class="tomb-date">JUL 2023 – JUN 2025</div>
-        </article>
         <article class="tomb">
           <span class="tomb-status">OPEN</span>
           <div class="tomb-org">IIM Ahmedabad</div>
@@ -367,8 +489,6 @@
           <ul>
             <li>Admit 2023, deferred 2 yrs</li>
             <li>Full 2nd-year fee covered on Year-1 academics</li>
-            <li>Silver, Sangharsh'26 basketball</li>
-            <li>PM Dissect semi-finalist</li>
           </ul>
           <div class="tomb-date">2025 – 2027</div>
         </article>
@@ -403,11 +523,25 @@
       </div>
     </section>
 
+    <section id="honors" class="section" data-variant="honors:split">
+      <div class="section-head">
+        <span class="section-index">10</span>
+        <h2>Holdings <span class="head-sub">// MBA-era honors</span></h2>
+      </div>
+      <div class="holdings-wrap">
+        <table class="holdings" data-act="fin" data-cols="Ticker,Holding,Position,Field,Year">
+          <thead></thead><tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== EPILOGUE ===================== -->
     <!-- CHART -->
     <section id="chart" class="section">
+      <div class="act-tag">Epilogue</div>
       <div class="section-head">
         <span class="section-index fin-index">07</span>
-        <h2>VBHV <span class="head-sub">// price history, 2017 → today</span></h2>
+        <h2>VBHV <span class="head-sub">// the whole journey as one ticker</span></h2>
       </div>
       <div class="quote">
         <div class="quote-top">
@@ -439,16 +573,14 @@
       </div>
     </section>
 
-    <!-- HONORS -->
-    <section id="honors" class="section">
+    <section id="honors-all" class="section" data-variant="honors:epilogue">
       <div class="section-head">
-        <span class="section-index fin-index">08</span>
+        <span class="section-index">12</span>
         <h2>Holdings <span class="head-sub">// SELECT * FROM honors ORDER BY rank</span></h2>
       </div>
       <div class="holdings-wrap">
-        <table class="holdings" id="holdings">
-          <thead><tr><th>Ticker</th><th>Holding</th><th>Position</th><th>Field</th><th>Year</th></tr></thead>
-          <tbody></tbody>
+        <table class="holdings" data-act="all" data-cols="Ticker,Holding,Position,Field,Year">
+          <thead></thead><tbody></tbody>
         </table>
       </div>
     </section>
@@ -459,7 +591,7 @@
         <span class="section-index fin-index">09</span>
         <h2>Beyond the desk</h2>
       </div>
-      <div class="beyond-grid four">
+      <div class="beyond-grid four" id="beyond-grid">
         <div class="beyond-panel">
           <h3 class="beyond-title"><span class="beyond-ico">◉</span> On the court</h3>
           <ul class="beyond-list">
@@ -484,14 +616,6 @@
             <li><span class="cert-cat">myth</span> Ram Chandra Series, Amish Tripathi</li>
           </ul>
           <p class="cert-note">I read a lot of mythological fiction, mostly by authors who take our mythology and imagine how scientific those times were.</p>
-        </div>
-        <div class="beyond-panel">
-          <h3 class="beyond-title"><span class="beyond-ico">◈</span> Leadership &amp; volunteering</h3>
-          <ul class="beyond-list">
-            <li><div class="bl-head"><span class="bl-role">Editor, The Alliance</span><span class="bl-org">NSUT</span></div><p>We put out 5 newspaper and magazine editions, read by 8K+ people. I also interviewed a college senior who had cleared UPSC and become an IAS officer, and one line from that interview stuck with me: <em>"do it once more, not for success, but to avoid the weight of regret."</em></p></li>
-            <li><div class="bl-head"><span class="bl-role">WIE Vice Chair</span><span class="bl-org">IEEE NSUT · 2021–22</span></div><p>Also IEEE TEMS India Student Ambassador and a volunteer at INDICON 2020.</p></li>
-            <li><div class="bl-head"><span class="bl-role">Public speaking &amp; MUNs</span><span class="bl-org">Best Delegate</span></div><p>Best Delegate at AMIMUN'20 and a Special Mention at SYMUNC'19. Before that, in school, I did a lot of olympiads, debates, poetry and quizzes.</p></li>
-          </ul>
         </div>
       </div>
     </section>
@@ -520,6 +644,18 @@
       </div>
     </section>
   </main>
+
+  <!-- leadership panel: placed in Act I or the epilogue by the beyond variant -->
+  <template id="lead-template">
+        <div class="beyond-panel" id="lead-panel">
+          <h3 class="beyond-title"><span class="beyond-ico">◈</span> Leadership &amp; volunteering</h3>
+          <ul class="beyond-list">
+            <li><div class="bl-head"><span class="bl-role">Editor, The Alliance</span><span class="bl-org">NSUT</span></div><p>We put out 5 newspaper and magazine editions, read by 8K+ people. I also interviewed a college senior who had cleared UPSC and become an IAS officer, and one line from that interview stuck with me: <em>"do it once more, not for success, but to avoid the weight of regret."</em></p></li>
+            <li><div class="bl-head"><span class="bl-role">WIE Vice Chair</span><span class="bl-org">IEEE NSUT · 2021–22</span></div><p>Also IEEE TEMS India Student Ambassador and a volunteer at INDICON 2020.</p></li>
+            <li><div class="bl-head"><span class="bl-role">Public speaking &amp; MUNs</span><span class="bl-org">Best Delegate</span></div><p>Best Delegate at AMIMUN'20 and a Special Mention at SYMUNC'19. Before that, in school, I did a lot of olympiads, debates, poetry and quizzes.</p></li>
+          </ul>
+        </div>
+  </template>
 
   <footer class="footer">
     <span>© <span id="year"></span> Vaibhav Sharma · Ahmedabad</span>
