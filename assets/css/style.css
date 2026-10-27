@@ -1155,5 +1155,9 @@ main, .footer { position: relative; z-index: 2; }
 
 /* gentle section snapping: settles on a heading when you stop nearby, never traps */
 html { scroll-snap-type: y proximity; scroll-padding-top: 72px; }
-.hero, .section, .pivot { scroll-snap-align: start; }
+/* snap to each heading (not the whole section) so it lands just under the nav bar */
+.section-head, .snap-mark { scroll-snap-align: start; scroll-margin-top: 16px; }
+.snap-mark { position: absolute; top: 0; left: 0; width: 1px; height: 1px; scroll-margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { html { scroll-snap-type: none; } }
+/* let the rotating title run wider than the intro text so the longest phrase fits on one line on desktop */
+.hero-role { width: min(calc(100vw - 2 * clamp(20px, 5vw, 60px)), 1000px); }

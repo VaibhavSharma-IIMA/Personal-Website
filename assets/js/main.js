@@ -24,6 +24,20 @@ window.__mix = 0;
       'ex-Investment Banking Summer Intern @ Deutsche Bank',
       'ex-Software Engineer @ LinkedIn',
     ];
+    // reserve room for the longest phrase so a wrap never pushes the page down mid-animation
+    const line = el.parentElement;
+    const reserve = () => {
+      const probe = line.cloneNode(false);
+      probe.removeAttribute('id');
+      probe.style.cssText = `position:absolute;visibility:hidden;min-height:0;width:${line.clientWidth}px`;
+      probe.textContent = phrases.reduce((a, b) => (b.length > a.length ? b : a)) + '▌';
+      line.parentElement.appendChild(probe);
+      line.style.minHeight = `${probe.offsetHeight}px`;
+      probe.remove();
+    };
+    reserve();
+    window.addEventListener('resize', reserve);
+    if (document.fonts) document.fonts.ready.then(reserve);
     if (reduced) { el.textContent = phrases[0]; return; }
     let p = 0, i = 0, deleting = false;
     const tick = () => {
