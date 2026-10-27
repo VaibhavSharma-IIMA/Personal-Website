@@ -204,8 +204,12 @@
 
       <div class="team-strip">
         <span class="team-key">TEAM</span>
-        <span><strong>Observability Engineering · Logs &amp; Events</strong>, LinkedIn Bangalore. We ran the centralized logging
-        platform and the events store, built on Kafka, Azure Data Explorer, Azure Blob Storage and Event Grid.</span>
+        <span><strong>Observability Engineering · Logs &amp; Events</strong>, LinkedIn Bangalore. We owned two company-wide
+        platforms: the centralized logging platform and the events store. Logs were collected by Fluent Bit agents running on
+        LinkedIn's servers, streamed through Kafka, and landed in Azure Data Explorer, where engineers searched them with KQL.
+        Events came in through emitter libraries (Python and Go) and an API layer, and flowed through Kafka into the events
+        store. Our own services were written mostly in Go and Python, with MySQL and Couchbase behind internal tools like the
+        traffic-shift tool.</span>
       </div>
 
       <div class="explorer">

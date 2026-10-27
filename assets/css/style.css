@@ -1152,3 +1152,8 @@ main, .footer { position: relative; z-index: 2; }
 .work-name { overflow-wrap: anywhere; }
 .work-owner { white-space: normal; max-width: 100%; }
 .work-lang { flex-wrap: wrap; gap: 7px 10px; }
+
+/* gentle section snapping: settles on a heading when you stop nearby, never traps */
+html { scroll-snap-type: y proximity; scroll-padding-top: 72px; }
+.hero, .section, .pivot { scroll-snap-align: start; }
+@media (prefers-reduced-motion: reduce) { html { scroll-snap-type: none; } }

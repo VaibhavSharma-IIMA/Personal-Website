@@ -310,26 +310,37 @@ window.__mix = 0;
     requestAnimationFrame(draw);
   })();
 
-  // Events: orbiting producers around a central store
+  // Events: producers fan in to one topic, which fans out to consumers
   (() => {
     const host = $('viz-events'); if (!host || reduced) return;
-    const canvas = miniCanvas(host); let ctx, w, h;
-    const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
+    const canvas = miniCanvas(host); let ctx, w, h, P, T, C;
+    const setup = () => {
+      const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
+      P = [0.2, 0.4, 0.6, 0.8].map((v) => [w * 0.1, h * v]);
+      T = [w * 0.5, h * 0.5];
+      C = [0.3, 0.7].map((v) => [w * 0.9, h * v]);
+    };
     setup(); window.addEventListener('resize', setup);
-    const dots = Array.from({ length: 5 }, (_, i) => ({ a: i * 1.25, r: 18 + i * 6, s: 0.01 + i * 0.004 }));
-    const draw = () => {
+    const draw = (t) => {
       ctx.clearRect(0, 0, w, h);
-      const cx = w / 2, cy = h / 2;
-      ctx.strokeStyle = 'rgba(167,139,250,0.15)';
-      dots.forEach((d) => { ctx.beginPath(); ctx.arc(cx, cy, d.r, 0, Math.PI * 2); ctx.stroke(); });
-      ctx.fillStyle = '#a78bfa'; ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
-      dots.forEach((d) => {
-        d.a += d.s;
-        const x = cx + Math.cos(d.a) * d.r, y = cy + Math.sin(d.a) * d.r;
-        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(167,139,250,0.22)'; ctx.lineWidth = 1;
+      [...P.map((p) => [p, T]), ...C.map((c) => [T, c])].forEach(([a, b]) => {
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
       });
-      ctx.shadowBlur = 0;
+      for (let k = 0; k < 8; k++) {
+        const ph = ((t / 1400) + k / 8) % 1;
+        const [a, b, f] = ph < 0.5 ? [P[k % 4], T, ph * 2] : [T, C[k % 2], (ph - 0.5) * 2];
+        ctx.fillStyle = k % 3 ? '#a78bfa' : '#4ade80';
+        ctx.beginPath(); ctx.arc(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = '#a78bfa';
+      [...P, ...C].forEach((n) => {
+        ctx.beginPath(); ctx.fillStyle = '#0a0e17'; ctx.arc(n[0], n[1], 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      });
+      ctx.fillStyle = '#1a1433'; ctx.lineWidth = 2;
+      ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.roundRect(T[0] - 16, T[1] - 10, 32, 20, 4); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.lineWidth = 1;
       requestAnimationFrame(draw);
     };
     requestAnimationFrame(draw);
@@ -362,8 +373,8 @@ window.__mix = 0;
     const grid = $('stack-grid'); if (!grid) return;
     const stack = [
       ['Python', '#4ade80'], ['Go', '#38e1ff'], ['Kafka', '#a78bfa'],
-      ['Azure Data Explorer', '#38bdf8'], ['Kusto / KQL', '#38e1ff'], ['Azure Blob', '#7c5cff'],
-      ['Event Grid', '#7c5cff'], ['Kubernetes', '#38bdf8'], ['MySQL', '#fbbf24'],
+      ['Fluent Bit', '#fb923c'], ['Azure Data Explorer', '#38bdf8'], ['Kusto / KQL', '#38e1ff'],
+      ['MySQL', '#fbbf24'],
       ['Couchbase', '#f87171'], ['Gradle', '#94a3b8'], ['GenAI / LLMs', '#4ade80'],
       ['Alerting & dashboards', '#fbbf24'], ['Incident response', '#f87171'],
     ];
@@ -639,7 +650,6 @@ window.__mix = 0;
   let seed = 7;
   const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
   const N = 32;
-  const LOGC = ['#4ade80', '#38bdf8', '#fbbf24', '#f87171'];
   let price = 100;
   const data = Array.from({ length: N }, () => {
     const open = price;
@@ -647,8 +657,7 @@ window.__mix = 0;
     const high = Math.max(open, close) * (1 + rand() * 0.025);
     const low = Math.min(open, close) * (1 - rand() * 0.025);
     price = close;
-    const lv = rand();
-    return { vol: 0.25 + rand() * 0.7, c: LOGC[lv < 0.62 ? 0 : lv < 0.82 ? 1 : lv < 0.95 ? 2 : 3], open, close, high, low };
+    return { vol: 0.25 + rand() * 0.7, open, close, high, low };
   });
   const pMin = Math.min(...data.map((d) => d.low)), pMax = Math.max(...data.map((d) => d.high));
 
@@ -668,8 +677,11 @@ window.__mix = 0;
     if (!ctx) return;
     lastP = p;
     const light = root.getAttribute('data-theme') === 'light';
-    const UP = light ? '#15803d' : '#22c55e', DN = light ? '#c62828' : '#ef4444';
-    const gridC = light ? 'rgba(40,60,100,0.12)' : 'rgba(150,160,180,0.10)';
+    const UP = light ? '#0a8f4a' : '#00d26a', DN = light ? '#d0302a' : '#ff3b30';
+    const BAR = light ? '#0c7597' : '#38e1ff';
+    const gridC = p < 0.5
+      ? (light ? 'rgba(40,60,100,0.12)' : 'rgba(150,160,180,0.10)')
+      : (light ? 'rgba(163,90,0,0.25)' : 'rgba(255,163,26,0.22)');
     ctx.clearRect(0, 0, w, h);
     const padL = 14, padR = 54, padT = 18, padB = 24;
     const cw = (w - padL - padR) / N;
@@ -699,14 +711,14 @@ window.__mix = 0;
       const q = smooth(clamp((p - 0.12) * 1.6 - (i / N) * 0.5)); // staggered left → right
       const x = padL + i * cw + cw / 2;
       const up = d.close >= d.open;
-      const col = mixHex(d.c, up ? UP : DN, q);
+      const col = mixHex(BAR, up ? UP : DN, q);
       // eng: histogram bar from the floor; fin: candle body
       const eTop = base - d.vol * (h - padT - padB), eBot = base;
       const fTop = yP(Math.max(d.open, d.close)), fBot = Math.max(yP(Math.min(d.open, d.close)), fTop + 2);
       const top = lerp(eTop, fTop, q), bot = lerp(eBot, fBot, q);
       const bw = lerp(cw * 0.78, cw * 0.56, q);
       ctx.fillStyle = col;
-      ctx.globalAlpha = lerp(0.75, 1, q);
+      ctx.globalAlpha = lerp(0.45 + 0.55 * d.vol, 1, q);
       ctx.fillRect(x - bw / 2, top, bw, bot - top);
       // wicks grow in
       if (q > 0.02) {
@@ -722,7 +734,7 @@ window.__mix = 0;
     const lineA = smooth(clamp((p - 0.7) / 0.25));
     if (lineA > 0) {
       ctx.globalAlpha = lineA;
-      ctx.strokeStyle = light ? '#a35a00' : '#ffa31a'; ctx.lineWidth = 2;
+      ctx.strokeStyle = light ? '#1b1307' : '#ffffff'; ctx.lineWidth = 2;
       ctx.beginPath();
       data.forEach((d, i) => {
         const s = data.slice(Math.max(0, i - 4), i + 1);
