@@ -24,6 +24,20 @@ window.__mix = 0;
       'ex-Investment Banking Summer Intern @ Deutsche Bank',
       'ex-Software Engineer @ LinkedIn',
     ];
+    // reserve room for the longest phrase so a wrap never pushes the page down mid-animation
+    const line = el.parentElement;
+    const reserve = () => {
+      const probe = line.cloneNode(false);
+      probe.removeAttribute('id');
+      probe.style.cssText = `position:absolute;visibility:hidden;min-height:0;width:${line.clientWidth}px`;
+      probe.textContent = phrases.reduce((a, b) => (b.length > a.length ? b : a)) + '▌';
+      line.parentElement.appendChild(probe);
+      line.style.minHeight = `${probe.offsetHeight}px`;
+      probe.remove();
+    };
+    reserve();
+    window.addEventListener('resize', reserve);
+    if (document.fonts) document.fonts.ready.then(reserve);
     if (reduced) { el.textContent = phrases[0]; return; }
     let p = 0, i = 0, deleting = false;
     const tick = () => {
@@ -683,7 +697,7 @@ window.__mix = 0;
       ? (light ? 'rgba(40,60,100,0.12)' : 'rgba(150,160,180,0.10)')
       : (light ? 'rgba(163,90,0,0.25)' : 'rgba(255,163,26,0.22)');
     ctx.clearRect(0, 0, w, h);
-    const padL = 14, padR = 54, padT = 18, padB = 24;
+    const padL = 14, padR = 54, padT = 40, padB = 26;
     const cw = (w - padL - padR) / N;
     const yP = (v) => padT + (1 - (v - pMin) / (pMax - pMin)) * (h - padT - padB);
     const base = h - padB;
@@ -706,6 +720,32 @@ window.__mix = 0;
       ctx.fillText(label, w - padR + 8, y + 3);
     }
     ctx.globalAlpha = 1;
+
+    // chart title, legend and x-axis label crossfade between the two readings
+    const k = smooth(clamp((p - 0.4) / 0.2));
+    const txt = light ? '#101a2e' : '#e6ecf5', sub = light ? '#47536b' : '#8a97ad';
+    const legend = (alpha, title, items, xLabel) => {
+      if (alpha <= 0.01) return;
+      ctx.globalAlpha = alpha;
+      ctx.textAlign = 'left';
+      ctx.font = '600 12px "JetBrains Mono", monospace';
+      ctx.fillStyle = txt;
+      ctx.fillText(title, padL + 4, 18);
+      ctx.font = '10px "JetBrains Mono", monospace';
+      let lx = padL + 4;
+      items.forEach(([kind, color, label]) => {
+        ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 2;
+        if (kind === 'line') { ctx.beginPath(); ctx.moveTo(lx, 30); ctx.lineTo(lx + 12, 30); ctx.stroke(); }
+        else ctx.fillRect(lx + 2, 25, 8, 10);
+        ctx.fillStyle = sub;
+        ctx.fillText(label, lx + 17, 34);
+        lx += 17 + ctx.measureText(label).width + 16;
+      });
+      ctx.fillText(xLabel, padL + 4, h - 8);
+      ctx.globalAlpha = 1;
+    };
+    legend(1 - k, 'Daily log volume (PB)', [['bar', light ? '#0c7597' : '#38e1ff', 'one bar = one day of ingestion']], 'days →');
+    legend(k, 'VBHV price (illustrative)', [['bar', UP, 'up day'], ['bar', DN, 'down day'], ['line', light ? '#1b1307' : '#ffffff', '5-day average']], 'trading days →');
 
     data.forEach((d, i) => {
       const q = smooth(clamp((p - 0.12) * 1.6 - (i / N) * 0.5)); // staggered left → right
