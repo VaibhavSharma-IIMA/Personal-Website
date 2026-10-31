@@ -13,7 +13,7 @@ window.__updateMode = (() => {
   const MODES = {
     campus: { brand: '.launch', foot: 'telemetry nominal' },
     eng: { brand: '.o11y', foot: 'all systems operational' },
-    fin: { brand: '.capital', foot: 'markets open · long builders' },
+    fin: { brand: '.capital', foot: 'markets open, long builders' },
   };
   let mode = null;
   return () => {
@@ -602,19 +602,19 @@ window.__variant = (() => {
     const items = [
       { name: 'cansat-ground-station', owner: 'CanSat 2021', tag: 'space', prize: 'Intl Rank 2 / 200+',
         description: 'I built the ground station from scratch so we could talk to the satellite and its payloads both ways. It had 0% packet loss and received 100% of commands, and multithreading the GUI brought data latency down to 1s. It raised our practical evaluation score by 30%.' },
-      { name: 'project-satark', owner: '5G Hackathon · DoT', tag: 'hackathon', prize: '₹1 Lakh · Top 100 / 1K+',
+      { name: 'project-satark', owner: '5G Hackathon, DoT', tag: 'hackathon', prize: '₹1 Lakh, Top 100 / 1K+',
         description: 'Project SATARK was picked as one of the Top 100 use cases, out of 1K+ entries, in the 5G Hackathon run by the Department of Telecommunications.' },
-      { name: 'chandigarh-police-hack', owner: 'Chandigarh Police × Infosys', tag: 'hackathon', prize: '2nd · ₹50,000',
+      { name: 'chandigarh-police-hack', owner: 'Chandigarh Police × Infosys', tag: 'hackathon', prize: '2nd, ₹50,000',
         description: 'Came 2nd out of 20+ teams at the hackathon Chandigarh Police ran with Infosys.' },
       { name: 'iace-hackathon', owner: 'NITI Aayog × CSIRO', tag: 'hackathon', prize: 'Top 5 / 1,500+',
         description: 'Made the top 5 at the India-Australia Circular Economy Hackathon, run by Atal Innovation Mission (NITI Aayog) and CSIRO, Australia.' },
-      { name: 'wiehack-3.0', owner: 'BVP IEEE', tag: 'hackathon', prize: '1st · ₹10,000',
+      { name: 'wiehack-3.0', owner: 'BVP IEEE', tag: 'hackathon', prize: '1st, ₹10,000',
         description: 'Won first place out of 100+ teams.' },
-      { name: 'innovathon-22', owner: 'Lady Hardinge Medical College', tag: 'hackathon', prize: '3rd · ₹4,000',
+      { name: 'innovathon-22', owner: 'Lady Hardinge Medical College', tag: 'hackathon', prize: '3rd, ₹4,000',
         description: 'Came 3rd out of 100+ teams at this medical hackathon.' },
       { name: 'cusehacks · apollohacks', owner: 'International', tag: 'hackathon', prize: '$100 × 2',
-        description: '"Best Hack for Social Good" out of 200+ at CuseHacks\'21 and "Best Solo Hack" out of 50+ at ApolloHacks\'21.' },
-      { name: 'reply-code-challenge', owner: 'Reply · 2021', tag: 'coding', prize: 'India #10 · World #106',
+        description: '"Best Hack for Social Good" out of 200+ at CuseHacks’21 and "Best Solo Hack" out of 50+ at ApolloHacks’21.' },
+      { name: 'reply-code-challenge', owner: 'Reply, 2021', tag: 'coding', prize: 'India #10, World #106',
         description: 'A team coding challenge with 2,000+ teams from around the world.' },
     ];
     grid.innerHTML = items.map((r) => `
@@ -709,7 +709,7 @@ window.__variant = (() => {
       details: [
         'Cut inter-datacenter traffic-shift time by 83%, reducing downtime and revenue loss during incidents',
         'Received the Bravo award twice, as the sole recipient among 4 teammates, for work on incident-response capabilities',
-        'Shrank the Traffic Tool\'s data-loss window from indefinite to 1 day by migrating its database from Couchbase to MySQL',
+        'Shrank the Traffic Tool’s data-loss window from indefinite to 1 day by migrating its database from Couchbase to MySQL',
         'Made all builds 5x faster, saving 50+ person-hours, by moving product builds from Gradle to native Go',
         'Drafted the proposal and initial code for a full rewrite of the traffic-shift tool; the project later moved to another team in an org restructure',
         'Prototyped a GenAI-driven incident analysis system, projected to cut Mean Time To Detection by 30%',
@@ -719,7 +719,7 @@ window.__variant = (() => {
       tags: ['internship', 'reliability'],
       msg: 'Groups platform: API operational cost -75%',
       details: [
-        'Cut API operational costs by 75% through a detailed analysis of the platform\'s read and write operations',
+        'Cut API operational costs by 75% through a detailed analysis of the platform’s read and write operations',
         'Wrote 4+ documents on database read and write costs for mid-tier API endpoints across the Groups platform',
         'Prototyped automation projected to cut the time for API cost analysis across the org by 40%',
         'Converted to a pre-placement offer' ] },
@@ -733,7 +733,7 @@ window.__variant = (() => {
         <span class="lr-ts">${e.ts}</span>
         <span class="lr-lvl lvl-${e.level}">${e.level}</span>
         <span class="lr-svc">${esc(e.company)}</span>
-        <span class="lr-msg"><span class="lr-caret" aria-hidden="true">▸</span><span class="role">${esc(e.role)}</span> · ${esc(e.msg)}<span class="lr-dur">${e.dur}</span></span>
+        <span class="lr-msg"><span class="lr-caret" aria-hidden="true">▸</span><span class="lr-text"><span class="role">${esc(e.role)}</span>: ${esc(e.msg)}</span><span class="lr-dur">${e.dur}</span></span>
       </button>
       <div class="lr-details" id="lr-det-${i}"><ul>${e.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></div>
     </div>`;
@@ -983,8 +983,8 @@ window.__variant = (() => {
     if (bar) bar.style.width = `${(p * 100).toFixed(1)}%`;
     if (readout) {
       readout.innerHTML = p < 0.5
-        ? `mode: <b>engineering</b> · ingest ${(9 * (1 - p)).toFixed(1)} PB/day`
-        : `mode: <b>finance</b> · VBHV ▲ ${((p - 0.5) * 2 * 18.4).toFixed(1)}%`;
+        ? `mode: <b>engineering</b>, ingest ${(9 * (1 - p)).toFixed(1)} PB/day`
+        : `mode: <b>finance</b>, VBHV ▲ ${((p - 0.5) * 2 * 18.4).toFixed(1)}%`;
     }
     if (kicker) kicker.textContent = p < 0.5 ? '$ tail -f /var/log/career' : 'VBHV <Equity> GP <GO>';
     draw(reduced ? 1 : p);
@@ -1062,7 +1062,7 @@ window.__variant = (() => {
       ctx.fillText(xLabel, padL + 4, h - 8);
       ctx.globalAlpha = 1;
     };
-    legend(1 - k, 'Altitude (m) · CanSat flight profile (illustrative)', [['dot', GREEN, 'one telemetry packet']], 'mission time →');
+    legend(1 - k, 'Altitude (m), CanSat flight profile (illustrative)', [['dot', GREEN, 'one telemetry packet']], 'mission time →');
     legend(k, 'Daily log volume (PB)', [['bar', CYAN, 'one bar = one day of ingestion']], 'days →');
 
     // the flight path fades as its packets drop into bars
@@ -1099,10 +1099,10 @@ window.__variant = (() => {
     if (bar) bar.style.width = `${(p * 100).toFixed(1)}%`;
     if (readout) {
       readout.innerHTML = p < 0.5
-        ? `mode: <b>mission control</b> · ALT ${Math.round(700 * (1 - p * 2))} m`
-        : `mode: <b>engineering</b> · ingest ${(9 * (p - 0.5) * 2).toFixed(1)} PB/day`;
+        ? `mode: <b>mission control</b>, ALT ${Math.round(700 * (1 - p * 2))} m`
+        : `mode: <b>engineering</b>, ingest ${(9 * (p - 0.5) * 2).toFixed(1)} PB/day`;
     }
-    if (kicker) kicker.textContent = p < 0.5 ? 'CANSAT-2021 · DOWNLINK' : '$ tail -f /var/log/linkedin';
+    if (kicker) kicker.textContent = p < 0.5 ? 'CANSAT-2021 DOWNLINK' : '$ tail -f /var/log/linkedin';
     draw(reduced ? 1 : p);
   };
   let ticking = false;
@@ -1189,7 +1189,7 @@ window.__variant = (() => {
       body: 'VARC 99.97 percentile out of 2.8L+ candidates. Admits from IIM A, C, K and I, and a decision to defer IIM A for two years.' },
     { t: 2023.5, v: 262, d: 'Jul 2023', title: 'LinkedIn Software Engineer',
       body: 'Joined Observability Engineering (Logs & Events). Graduated NSUT with 8.95/10 and Department Rank 3/147.' },
-    { t: 2024.5, v: 318, d: '2023–25', title: '$1M+ saved · 0 → 300K events/day',
+    { t: 2024.5, v: 318, d: '2023 to 2025', title: '$1M+ saved · 0 → 300K events/day',
       body: 'Migrated 3PB+ of daily log ingestion across Azure regions, ran a 9PB+/day logs platform, helped build the events platform from scratch, made traffic shifts 83% faster. Bravo award twice.' },
     { t: 2025.45, v: 334, d: 'Jun 2025', title: 'IIM Ahmedabad, PGP 2025–27',
       body: 'I finally took up the admit I had deferred. First year was mostly deadlines and back-to-back submissions, with basketball in between.' },
@@ -1327,17 +1327,17 @@ window.__variant = (() => {
   const H = [
     // act, code, honor, detail, result, field, year
     ['campus', 'NDA', 'NDA-2 Exam 2018', '520 recommended of 6,931 R1-selected', 'AIR 10', 'Defence', '2018'],
-    ['campus', 'KVPY', 'KVPY Fellowship', 'IISc · Class 11 SA stream', '1 / 869', 'Science', '2017'],
+    ['campus', 'KVPY', 'KVPY Fellowship', 'IISc, Class 11 SA stream', '1 / 869', 'Science', '2017'],
     ['campus', 'JEE', 'JEE Mains / Advanced', '11L+ / 1.7L+ candidates', 'Top 0.834% / 3.2%', 'Engineering', '2019'],
-    ['campus', 'CVSPK', 'CVSPK Scholarship', 'NSUT · top 5% of 1,280+', '100% tuition waiver', 'Merit', '2022'],
-    ['campus', 'RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10 · World #106', 'Coding', '2021'],
-    ['campus', 'MUN', "AMIMUN'20 · SYMUNC'19", 'Model United Nations', 'Best Delegate · Special Mention', 'Debate', '2019–20'],
-    ['other', 'CNST', 'CanSat 2021', 'NASA · Lockheed Martin · US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
-    ['other', 'NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10 · Rank 3/147', 'Academics', '2023'],
-    ['other', 'BRVO', 'Bravo Award ×2', 'LinkedIn · incident response capabilities', 'Sole recipient among 4', 'Engineering', '2023–25'],
-    ['fin', 'CAT', 'CAT 2022', 'VARC 99.97 %ile · 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
-    ['fin', 'XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund · full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
-    ['fin', 'PMD', 'PM Dissect', 'ProdMan Club, IIM A · 99 teams, 219 participants', 'Top 25 · semi-finalist', 'Product', '2025'],
+    ['campus', 'CVSPK', 'CVSPK Scholarship', 'NSUT, top 5% of 1,280+', '100% tuition waiver', 'Merit', '2022'],
+    ['campus', 'RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10, World #106', 'Coding', '2021'],
+    ['campus', 'MUN', "AMIMUN'20 · SYMUNC'19", 'Model United Nations', 'Best Delegate, Special Mention', 'Debate', '2019 to 2020'],
+    ['other', 'CNST', 'CanSat 2021', 'NASA, Lockheed Martin, US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
+    ['other', 'NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10, Rank 3/147', 'Academics', '2023'],
+    ['other', 'BRVO', 'Bravo Award ×2', 'LinkedIn, incident response capabilities', 'Sole recipient among 4', 'Engineering', '2023 to 2025'],
+    ['fin', 'CAT', 'CAT 2022', 'VARC 99.97 %ile, 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
+    ['fin', 'XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund, full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
+    ['fin', 'PMD', 'PM Dissect', 'ProdMan Club, IIM A: 99 teams, 219 participants', 'Top 25, semi-finalist', 'Product', '2025'],
   ];
   document.querySelectorAll('table.holdings[data-act]').forEach((table) => {
     const act = table.dataset.act;
@@ -1345,7 +1345,7 @@ window.__variant = (() => {
     table.querySelector('thead').innerHTML = `<tr>${table.dataset.cols.split(',').map((c) => `<th>${c}</th>`).join('')}</tr>`;
     table.querySelector('tbody').innerHTML = rows.map(([, t, n, sub, pos, f, y]) => `
       <tr><td class="h-tkr">${t}</td><td class="h-name">${n}<small>${sub}</small></td>
-      <td class="h-up">▲ ${pos}</td><td>${f}</td><td class="h-yr">${y}</td></tr>`).join('');
+      <td class="h-up">▲ ${pos}</td><td class="h-field">${f}</td><td class="h-yr">${y}</td></tr>`).join('');
   });
 })();
 
@@ -1357,11 +1357,9 @@ window.__variant = (() => {
   const btn = document.getElementById('theme-toggle');
   if (!btn) return;
   const root = document.documentElement;
-  const icon = btn.querySelector('.theme-icon');
   const apply = (theme) => {
     root.setAttribute('data-theme', theme);
     btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-    if (icon) icon.textContent = theme === 'dark' ? '☾' : '☀';
   };
   apply(root.getAttribute('data-theme') || 'dark');
   btn.addEventListener('click', () => {
