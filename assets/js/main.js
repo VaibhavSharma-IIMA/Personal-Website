@@ -29,28 +29,21 @@ window.__updateMode = (() => {
   };
 })();
 
-/* ---------- Layout variants (preview): ?honors=split|epilogue|chart&beyond=split|epilogue ---------- */
+/* ---------- Layout variants (preview): ?honors=split|epilogue|chart ---------- */
 window.__variant = (() => {
   const q = new URLSearchParams(location.search);
   const pick = (k, allowed, dflt) => (allowed.includes(q.get(k)) ? q.get(k) : dflt);
   const v = {
     honors: pick('honors', ['split', 'epilogue', 'chart'], 'split'),
-    beyond: pick('beyond', ['split', 'epilogue'], 'split'),
   };
   document.querySelectorAll('[data-variant]').forEach((el) => {
     const [k, val] = el.dataset.variant.split(':');
     el.hidden = v[k] !== val;
   });
-  // leadership panel lives in Act I (split) or joins the personal panels in the epilogue
+  // the leadership panel sits in Act I
   const tpl = document.getElementById('lead-template');
-  const grid = document.getElementById('beyond-grid');
-  if (tpl && grid) {
-    const panel = tpl.content.firstElementChild.cloneNode(true);
-    if (v.beyond === 'split') document.getElementById('lead-slot').appendChild(panel);
-    else grid.appendChild(panel);
-    grid.classList.toggle('three', grid.children.length === 3);
-    grid.classList.toggle('four', grid.children.length === 4);
-  }
+  const slot = document.getElementById('lead-slot');
+  if (tpl && slot) slot.appendChild(tpl.content.firstElementChild.cloneNode(true));
   // number the visible sections in reading order
   let n = 0;
   document.querySelectorAll('.section-index').forEach((el) => {
@@ -59,15 +52,11 @@ window.__variant = (() => {
     el.textContent = String(n).padStart(2, '0');
   });
   // a small switcher so variants can be compared side by side
-  if (q.has('honors') || q.has('beyond') || q.has('preview')) {
-    const link = (h, b, label) => {
-      const on = h === v.honors && b === v.beyond;
-      return `<a href="?honors=${h}&beyond=${b}"${on ? ' class="on"' : ''}>${label}</a>`;
-    };
+  if (q.has('honors') || q.has('preview')) {
+    const link = (h, label) => `<a href="?honors=${h}"${h === v.honors ? ' class="on"' : ''}>${label}</a>`;
     const box = document.createElement('div');
     box.className = 'variant-switch';
-    box.innerHTML = `<b>preview</b> honors: ${link('split', v.beyond, 'split')}${link('epilogue', v.beyond, 'epilogue')}${link('chart', v.beyond, 'chart only')}`
-      + ` · beyond: ${link(v.honors, 'split', 'split')}${link(v.honors, 'epilogue', 'epilogue')}`;
+    box.innerHTML = `<b>preview</b> honors: ${link('split', 'split')}${link('epilogue', 'epilogue')}${link('chart', 'chart only')}`;
     document.body.appendChild(box);
   }
   return v;
@@ -287,7 +276,7 @@ window.__variant = (() => {
       { name: 'producers', color: '#4ade80' },
       { name: 'emitter', color: '#38e1ff' },
       { name: 'kafka', color: '#a78bfa' },
-      { name: 'events store', color: '#38e1ff' },
+      { name: 'events platform', color: '#38e1ff' },
       { name: 'query', color: '#7c5cff' },
     ];
     let nodes = [], packets = [];
@@ -612,8 +601,10 @@ window.__variant = (() => {
         description: 'Won first place out of 100+ teams.' },
       { name: 'innovathon-22', owner: 'Lady Hardinge Medical College', tag: 'hackathon', prize: '3rd, ₹4,000',
         description: 'Came 3rd out of 100+ teams at this medical hackathon.' },
-      { name: 'cusehacks · apollohacks', owner: 'International', tag: 'hackathon', prize: '$100 × 2',
-        description: '"Best Hack for Social Good" out of 200+ at CuseHacks’21 and "Best Solo Hack" out of 50+ at ApolloHacks’21.' },
+      { name: 'cusehacks-21', owner: 'CuseHacks', tag: 'hackathon', prize: '$100',
+        description: '"Best Hack for Social Good" out of 200+ teams.' },
+      { name: 'apollohacks-21', owner: 'ApolloHacks', tag: 'hackathon', prize: '$100',
+        description: '"Best Solo Hack" out of 50+ entries.' },
       { name: 'reply-code-challenge', owner: 'Reply, 2021', tag: 'coding', prize: 'India #10, World #106',
         description: 'A team coding challenge with 2,000+ teams from around the world.' },
     ];
@@ -1331,12 +1322,16 @@ window.__variant = (() => {
     ['campus', 'JEE', 'JEE Mains / Advanced', '11L+ / 1.7L+ candidates', 'Top 0.834% / 3.2%', 'Engineering', '2019'],
     ['campus', 'CVSPK', 'CVSPK Scholarship', 'NSUT, top 5% of 1,280+', '100% tuition waiver', 'Merit', '2022'],
     ['campus', 'RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10, World #106', 'Coding', '2021'],
+    ['campus', 'NCC', "NCC 'A' Certificate", '4 Delhi Battalion NCC', 'Awarded', 'Service', '2016'],
+    ['campus', 'ZNL', 'Delhi region Basketball Zonals', 'School team', 'Winner', 'Sport', '2015'],
     ['campus', 'MUN', "AMIMUN'20 · SYMUNC'19", 'Model United Nations', 'Best Delegate, Special Mention', 'Debate', '2019 to 2020'],
     ['other', 'CNST', 'CanSat 2021', 'NASA, Lockheed Martin, US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
     ['other', 'NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10, Rank 3/147', 'Academics', '2023'],
     ['other', 'BRVO', 'Bravo Award ×2', 'LinkedIn, incident response capabilities', 'Sole recipient among 4', 'Engineering', '2023 to 2025'],
     ['fin', 'CAT', 'CAT 2022', 'VARC 99.97 %ile, 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
     ['fin', 'XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund, full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
+    ['fin', 'SNGR', "Sangharsh'26", 'Inter-IIM sports tournament, basketball', 'Silver', 'Sport', '2026'],
+    ['fin', 'YLGR', 'Yalgaar', 'IIM Ahmedabad basketball tournament', 'Runner-up', 'Sport', '2025'],
     ['fin', 'PMD', 'PM Dissect', 'ProdMan Club, IIM A: 99 teams, 219 participants', 'Top 25, semi-finalist', 'Product', '2025'],
   ];
   document.querySelectorAll('table.holdings[data-act]').forEach((table) => {

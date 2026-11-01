@@ -968,8 +968,8 @@ main, .footer { position: relative; z-index: 2; }
 :root[data-theme="light"] .nav {
   background: color-mix(in srgb, var(--paper) 90%, transparent);
 }
-:root[data-theme="light"] #log-stream { opacity: 0.14; }
-:root[data-theme="light"] .scanline { opacity: 0.06; }
+:root[data-theme="light"] #log-stream { opacity: 0.3; }
+:root[data-theme="light"] .scanline { opacity: 0.1; }
 :root[data-theme="light"] #pipeline {
   background: linear-gradient(180deg, color-mix(in srgb, var(--sheen) 50%, transparent), color-mix(in srgb, var(--paper-2) 60%, transparent));
 }
@@ -998,7 +998,7 @@ main, .footer { position: relative; z-index: 2; }
    ========================================================= */
 #log-stream { transition: opacity 0.9s ease; }
 :root[data-mode="fin"] #log-stream { opacity: 0.18; }
-:root[data-theme="light"][data-mode="fin"] #log-stream { opacity: 0.1; }
+:root[data-theme="light"][data-mode="fin"] #log-stream { opacity: 0.22; }
 .brand-text .accent { transition: color 0.9s ease; }
 
 /* team context strip under the impact stats */
