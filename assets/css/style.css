@@ -1248,7 +1248,10 @@ html { scroll-padding-top: 72px; }
 .mission-list li { position: relative; padding-left: 18px; color: var(--muted); font-size: 0.92rem; }
 .mission-list li::before { content: '›'; position: absolute; left: 2px; color: var(--accent); font-weight: 700; }
 
-.beyond-grid.one { grid-template-columns: 1fr; max-width: 760px; }
+.beyond-grid.one { grid-template-columns: minmax(0, 1fr); }
+/* full container width, its three entries side by side */
+#lead-slot .beyond-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+@media (max-width: 860px) { #lead-slot .beyond-list { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
 .beyond-grid.three { grid-template-columns: repeat(3, 1fr); }
 .tombs { grid-template-columns: repeat(3, 1fr); }
 
