@@ -718,7 +718,7 @@ window.__variant = (() => {
       document.querySelectorAll(sel).forEach((g) => {
         [...g.children].forEach((c, i) => {
           c.classList.add('reveal');
-          c.style.transitionDelay = `${(i % 8) * 70}ms`;
+          c.style.transitionDelay = `${Math.min(i, 10) * 70}ms`;
         });
       });
     });
