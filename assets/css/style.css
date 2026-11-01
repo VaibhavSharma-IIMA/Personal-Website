@@ -1367,3 +1367,15 @@ p { text-wrap: pretty; }
 /* 26b: no control is disabled today; if one is, it says so */
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .q-range { min-height: 44px; padding: 0 14px; }
+/* Mission summary: flight replay + ground-station link, then the shared telemetry readout */
+.sim-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin: 22px 0 16px; }
+.sim-panel { margin: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+.sim-panel canvas { display: block; width: 100%; height: 240px; }
+.sim-panel figcaption { padding: 8px 14px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: var(--quiet); }
+#cansat .metrics-bar { margin: 0 0 22px; padding: 16px 20px; max-width: none; }
+@media (max-width: 760px) { .sim-grid { grid-template-columns: minmax(0, 1fr); } }
+/* contact sheet: two lanes */
+.ts-group { padding: 12px 20px 6px; font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); border-top: 1px solid var(--border); }
+.ts-head + .ts-group { border-top: 0; }
+.ts-small { font-size: 0.8rem; }
+.ts-small .ts-v { color: var(--muted); }

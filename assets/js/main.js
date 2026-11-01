@@ -75,8 +75,8 @@ window.__variant = (() => {
     const el = $('typewriter');
     if (!el) return;
     const phrases = [
-      'Investment Partner @ Campus Fund',
       'MBA Candidate @ IIM Ahmedabad, Class of 2027',
+      'Investment Partner @ Campus Fund',
       'ex-Investment Banking Summer Intern @ Deutsche Bank',
       'ex-Software Engineer @ LinkedIn',
     ];
@@ -142,15 +142,18 @@ window.__variant = (() => {
     window.addEventListener('themechange', () => {
       theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     });
-    // campus: a labelled CanSat packet table (illustrative) scrolling under a pinned header
+    // campus: a labelled CanSat packet table (illustrative). The newest packet enters at the top,
+    // lit like a live feed; flight-phase changes print as event lines; a status strip and the
+    // mission clock sit above the column header.
     const TEL = {
-      dark:  { head: '#3dff9a', band: 'rgba(61,255,154,0.10)', val: '#3dff9a', dim: 'rgba(61,255,154,0.7)', state: '#38bdf8', chute: '#fbbf24' },
-      light: { head: '#0a7a45', band: 'rgba(10,122,69,0.10)', val: '#0a7a45', dim: 'rgba(10,122,69,0.75)', state: '#0369a1', chute: '#a86a00' },
+      dark:  { head: '#3dff9a', band: 'rgba(61,255,154,0.10)', live: 'rgba(61,255,154,0.16)', val: '#3dff9a', dim: 'rgba(61,255,154,0.7)', state: '#38bdf8', chute: '#fbbf24', bar: 'rgba(61,255,154,0.55)' },
+      light: { head: '#0a7a45', band: 'rgba(10,122,69,0.10)', live: 'rgba(10,122,69,0.16)', val: '#0a7a45', dim: 'rgba(10,122,69,0.75)', state: '#0369a1', chute: '#a86a00', bar: 'rgba(10,122,69,0.5)' },
     };
-    const TCOLS = [['TEAM', 0], ['MISSION_TIME', 58], ['PKT', 170], ['ALT_m', 218], ['PRESS_hPa', 282], ['TEMP_C', 366], ['VOLT', 430], ['STATE', 482]];
-    const TABLE_W = 610, ROW_H = 15;
+    const TCOLS = [['TEAM', 0], ['MISSION_TIME', 58], ['PKT', 166], ['ALT_m', 210], ['', 270], ['PRESS_hPa', 324], ['TEMP_C', 404], ['VOLT', 464], ['SATS', 514], ['STATE', 556], ['CRC', 656]];
+    const TABLE_W = 720, ROW_H = 15, BAR_W = 44;
+    const EVENTS = { ASCENT: 'LIFTOFF', APOGEE: 'APOGEE REACHED', DESCENT: 'SEPARATION', PARACHUTE: 'PARACHUTE DEPLOYED', LANDED: 'TOUCHDOWN', LAUNCH_WAIT: 'ON THE PAD' };
     // one packet per second over a looping ~5 minute flight
-    const packet = (n) => {
+    const flightAt = (n) => {
       const t = ((n % 300) + 300) % 300;
       let alt, state;
       if (t < 4) { alt = 0; state = 'LAUNCH_WAIT'; }
@@ -159,37 +162,58 @@ window.__variant = (() => {
       else if (t < 120) { alt = 700 - (t - 26) * 3.2; state = 'DESCENT'; }
       else if (t < 288) { alt = Math.max(0, 400 - (t - 120) * 2.4); state = 'PARACHUTE'; }
       else { alt = 0; state = 'LANDED'; }
-      const mm = String(Math.floor(t / 60)).padStart(2, '0'), ss = String(t % 60).padStart(2, '0');
+      return { t, alt, state };
+    };
+    const clock = (t) => `00:${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    const packet = (n) => {
+      const { t, alt, state } = flightAt(n);
       const press = 1013.25 * Math.pow(1 - 2.25577e-5 * alt, 5.25588); // standard atmosphere
-      return ['GAGAN', `00:${mm}:${ss}`, String(1000 + (((n % 9000) + 9000) % 9000)), alt.toFixed(1), press.toFixed(1),
-        (21 + Math.sin(n * 0.7) * 2.5).toFixed(1), (5.02 - (t / 300) * 0.2).toFixed(2), state];
+      return { alt, state, t, cells: ['GAGAN', clock(t), String(1000 + (((n % 9000) + 9000) % 9000)), alt.toFixed(1), '',
+        press.toFixed(1), (21 + Math.sin(n * 0.7) * 2.5).toFixed(1), (5.02 - (t / 300) * 0.2).toFixed(2),
+        String(7 + (((n % 3) + 3) % 3)), state, 'OK'] };
     };
     let telScroll = 0;
     const drawTelemetry = (alpha) => {
       const P = TEL[theme];
-      const top = 96, tiles = Math.max(1, Math.ceil(w / TABLE_W));
+      const top = 92, headY = top + 22, rowTop = top + 46, tiles = Math.max(1, Math.ceil(w / TABLE_W));
       telScroll += 0.35;
-      const first = Math.floor(telScroll / ROW_H), off = telScroll % ROW_H;
-      ctx.font = '12px "JetBrains Mono", monospace';
+      const step = Math.floor(telScroll / ROW_H), off = telScroll % ROW_H;
       for (let tIdx = 0; tIdx < tiles; tIdx++) {
-        const x0 = 16 + tIdx * TABLE_W;
-        for (let r = 0; top + 22 + r * ROW_H - off < h + ROW_H; r++) {
-          const y = top + 22 + r * ROW_H - off;
-          if (y < top + 20) continue;
-          const row = packet(first + r + tIdx * 97);
+        const x0 = 16 + tIdx * TABLE_W, latest = step + tIdx * 97;
+        for (let r = 0; rowTop + r * ROW_H + off < h + ROW_H; r++) {
+          const y = rowTop + r * ROW_H + off;
+          const n = latest - r, pk = packet(n), prev = packet(n - 1);
           const fade = Math.max(0.12, Math.min(0.9, 1 - Math.abs(y - h * 0.55) / (h * 0.7)));
-          row.forEach((v, i) => {
-            ctx.globalAlpha = alpha * fade * 0.6;
-            ctx.fillStyle = i === 7 ? (v === 'PARACHUTE' ? P.chute : P.state) : i === 3 ? P.val : P.dim;
+          const live = r === 0;
+          if (live) {
+            ctx.globalAlpha = alpha; ctx.fillStyle = P.live; ctx.fillRect(x0 - 8, y - 11, TABLE_W - 24, ROW_H);
+            ctx.font = '12px "JetBrains Mono", monospace'; ctx.fillStyle = P.head; ctx.fillText('▶', x0 - 22, y);
+          }
+          if (pk.state !== prev.state) {
+            // flight-phase change: one amber event line in place of the row
+            ctx.globalAlpha = alpha * (live ? 1 : fade * 0.85);
+            ctx.font = '600 12px "JetBrains Mono", monospace'; ctx.fillStyle = P.chute;
+            ctx.fillText(`EVENT   T+${clock(pk.t)}   ${EVENTS[pk.state]}`, x0, y);
+            continue;
+          }
+          ctx.font = '12px "JetBrains Mono", monospace';
+          pk.cells.forEach((v, i) => {
+            ctx.globalAlpha = alpha * (live ? 1 : fade * 0.6);
+            if (i === 4) { // altitude as a small bar; down the column it traces the flight
+              ctx.fillStyle = P.bar; ctx.fillRect(x0 + TCOLS[i][1], y - 8, Math.max(1, (pk.alt / 700) * BAR_W), 6);
+              return;
+            }
+            ctx.fillStyle = i === 9 ? (v === 'PARACHUTE' ? P.chute : P.state) : i === 3 ? P.val : P.dim;
             ctx.fillText(v, x0 + TCOLS[i][1], y);
           });
         }
-        // pinned header
+        // status strip with the mission clock, then the pinned column header
+        const now = packet(latest);
         ctx.globalAlpha = alpha * 0.85;
-        ctx.fillStyle = P.band; ctx.fillRect(x0 - 8, top, TABLE_W - 24, 20);
+        ctx.fillStyle = P.band; ctx.fillRect(x0 - 8, top, TABLE_W - 24, 18); ctx.fillRect(x0 - 8, headY, TABLE_W - 24, 20);
         ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.fillStyle = P.head;
-        TCOLS.forEach(([c, x]) => ctx.fillText(c, x0 + x, top + 14));
-        ctx.font = '12px "JetBrains Mono", monospace';
+        ctx.fillText(`LINK RX    RSSI -${70 + (latest % 5)} dBm    LOSS 0.0%    MISSION T+${clock(now.t)}    ${now.state}`, x0, top + 13);
+        TCOLS.forEach(([c, x]) => c && ctx.fillText(c, x0 + x, headY + 14));
       }
       ctx.globalAlpha = 1;
     };
@@ -401,80 +425,143 @@ window.__variant = (() => {
     setInterval(update, reduced ? 3000 : 1200);
   })();
 
-  /* ---------- Hero: satellite ground track (decorative) ---------- */
+  /* ---------- Mission summary: one shared illustrative flight drives three views ---------- */
+  // f runs 0 -> 1 over one flight: pad, rocket ascent, apogee and separation, free descent,
+  // parachute, touchdown. The replay, the ground-station link and the readout all read it.
+  const FLIGHT_MS = 16000;
+  const flight = (f) => {
+    if (f < 0.06) return { alt: 0, vel: 0, state: 'PAD' };
+    if (f < 0.2) { const k = (f - 0.06) / 0.14; return { alt: 700 * Math.sin(k * Math.PI / 2), vel: -60 * Math.cos(k * Math.PI / 2), state: 'ASCENT' }; }
+    if (f < 0.24) return { alt: 700, vel: 0, state: 'APOGEE' };
+    if (f < 0.45) { const k = (f - 0.24) / 0.21; return { alt: 700 - 300 * k, vel: 14, state: 'DESCENT' }; }
+    if (f < 0.92) { const k = (f - 0.45) / 0.47; return { alt: 400 * (1 - k), vel: 5.8, state: 'PARACHUTE' }; }
+    return { alt: 0, vel: 0, state: 'LANDED' };
+  };
+  const flightNow = () => (reduced ? 0.6 : ((performance.now() % FLIGHT_MS) / FLIGHT_MS));
+  const simColors = () => {
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    return light
+      ? { g: '#0a7a45', s: '#0369a1', a: '#a86a00', dim: 'rgba(10,122,69,0.35)', faint: 'rgba(10,122,69,0.15)', ink: '#101a2e', sub: '#47536b', bg: '#fbfcfe' }
+      : { g: '#3dff9a', s: '#38bdf8', a: '#fbbf24', dim: 'rgba(61,255,154,0.4)', faint: 'rgba(61,255,154,0.15)', ink: '#e6ecf5', sub: '#8a97ad', bg: '#06101c' };
+  };
+  const chute = (ctx, x, y, c) => {
+    ctx.strokeStyle = c; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(x, y - 22, 15, Math.PI, 0); ctx.stroke();
+    for (const d of [-13, 0, 13]) { ctx.beginPath(); ctx.moveTo(x + d, y - 22); ctx.lineTo(x, y - 6); ctx.stroke(); }
+  };
+
+  // C · flight replay, side view
   (() => {
-    const canvas = $('groundtrack');
-    if (!canvas || reduced) return;
+    const canvas = $('flight-sim'); if (!canvas) return;
     let ctx, w, h;
     const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
-    setup();
-    window.addEventListener('resize', setup);
-    const track = (x) => h / 2 + Math.sin((x / w) * Math.PI * 4 + 0.6) * h * 0.28;
-    const GS = { x: 0.62, y: 0.62 }; // ground station position (fractions)
-    const draw = (t) => {
-      const light = document.documentElement.getAttribute('data-theme') === 'light';
-      const G = light ? '#0a7a45' : '#3dff9a', S = light ? '#0369a1' : '#38bdf8';
+    setup(); window.addEventListener('resize', setup);
+    const EV = [['LAUNCH', 0.06], ['APOGEE', 0.2], ['PARACHUTE', 0.45], ['LANDED', 0.92]];
+    const draw = () => {
+      const C = simColors(), f = flightNow();
       ctx.clearRect(0, 0, w, h);
-      // lat/long grid
-      ctx.fillStyle = light ? 'rgba(10,90,60,0.25)' : 'rgba(61,255,154,0.16)';
-      for (let x = 12; x < w; x += 24) for (let y = 12; y < h; y += 24) ctx.fillRect(x, y, 1.5, 1.5);
-      // predicted track
-      ctx.setLineDash([4, 6]); ctx.strokeStyle = light ? 'rgba(10,90,60,0.4)' : 'rgba(61,255,154,0.35)'; ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 4) x === 0 ? ctx.moveTo(x, track(x)) : ctx.lineTo(x, track(x));
+      const padL = 28, padR = 20, base = h - 52, span = base - 30;
+      const px = (q) => padL + (w - padL - padR) * q, py = (q) => base - (flight(q).alt / 700) * span;
+      ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL - 10, base); ctx.lineTo(w - padR, base); ctx.stroke();
+      // predicted path, then the flown part
+      ctx.setLineDash([3, 5]); ctx.strokeStyle = C.dim; ctx.beginPath();
+      for (let q = 0; q <= 1.0001; q += 0.005) q ? ctx.lineTo(px(q), py(q)) : ctx.moveTo(px(q), py(q));
       ctx.stroke(); ctx.setLineDash([]);
-      // satellite position + flown track
-      const sx = ((t / 60) % (w + 80)) - 40, sy = track(sx);
-      ctx.strokeStyle = G; ctx.lineWidth = 2; ctx.beginPath();
-      for (let x = Math.max(0, sx - 160); x <= sx; x += 3) x === Math.max(0, sx - 160) ? ctx.moveTo(x, track(x)) : ctx.lineTo(x, track(x));
+      ctx.strokeStyle = C.g; ctx.lineWidth = 2; ctx.beginPath();
+      for (let q = 0; q <= f; q += 0.005) q ? ctx.lineTo(px(q), py(q)) : ctx.moveTo(px(q), py(q));
       ctx.stroke();
-      // ground station and its link when in range
-      const gx = GS.x * w, gy = GS.y * h, inRange = Math.hypot(sx - gx, sy - gy) < h * 0.55;
-      ctx.fillStyle = S; ctx.beginPath(); ctx.moveTo(gx, gy - 8); ctx.lineTo(gx - 7, gy + 5); ctx.lineTo(gx + 7, gy + 5); ctx.closePath(); ctx.fill();
-      ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
-      ctx.fillText('GS', gx, gy + 18);
-      if (inRange) {
-        ctx.strokeStyle = S; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t / 120); ctx.setLineDash([2, 4]);
-        ctx.beginPath(); ctx.moveTo(gx, gy - 8); ctx.lineTo(sx, sy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      const st = flight(f), x = px(f), y = py(f);
+      ctx.fillStyle = C.g; ctx.shadowColor = C.g; ctx.shadowBlur = 10;
+      if (st.state === 'PAD' || st.state === 'ASCENT') { // the rocket
+        ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x - 5, y + 4); ctx.lineTo(x + 5, y + 4); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.fillRect(x - 6, y - 6, 12, 12);
+        if (st.state === 'PARACHUTE' || st.state === 'LANDED') { ctx.shadowBlur = 0; chute(ctx, x, y, C.g); }
       }
-      // footprint + satellite
-      ctx.strokeStyle = G; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
-      ctx.fillStyle = G; ctx.shadowColor = G; ctx.shadowBlur = 14;
-      ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
-      ctx.fillText(inRange ? 'LINK · RX' : 'NO LINK', sx, sy - 14);
-      requestAnimationFrame(draw);
+      ctx.shadowBlur = 0;
+      ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'left'; ctx.fillStyle = C.sub;
+      ctx.fillText(`ALT ${st.alt.toFixed(0)} m`, Math.min(x + 12, w - 90), Math.max(14, y - 12));
+      // event ticks
+      EV.forEach(([label, at]) => {
+        const ex = px(at), done = f >= at;
+        ctx.fillStyle = done ? C.g : C.bg; ctx.strokeStyle = C.g; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(ex, h - 26, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = done ? C.g : C.sub; ctx.textAlign = 'center'; ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillText(label, ex, h - 10);
+      });
+      ctx.textAlign = 'left';
+      if (!reduced) requestAnimationFrame(draw);
     };
     requestAnimationFrame(draw);
   })();
 
-  /* ---------- Hero: simulated CanSat telemetry ---------- */
+  // B · ground-station link: commands up, telemetry down
+  (() => {
+    const canvas = $('link-sim'); if (!canvas) return;
+    let ctx, w, h;
+    const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
+    setup(); window.addEventListener('resize', setup);
+    const draw = (now) => {
+      const C = simColors(), f = flightNow(), st = flight(f);
+      ctx.clearRect(0, 0, w, h);
+      const gx = 56, gy = h - 62, sx = w - 70, sy = 46 + (1 - st.alt / 700) * (h - 150);
+      // dish
+      ctx.strokeStyle = C.s; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(gx - 16, gy + 22); ctx.lineTo(gx, gy - 6); ctx.lineTo(gx + 16, gy + 22); ctx.stroke();
+      ctx.beginPath(); ctx.arc(gx, gy - 12, 13, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.font = '10px "JetBrains Mono", monospace'; ctx.fillStyle = C.s; ctx.textAlign = 'center'; ctx.fillText('GROUND STATION', gx + 10, gy + 38);
+      // the CanSat, under canopy once it is out
+      ctx.fillStyle = C.g; ctx.fillRect(sx - 7, sy - 6, 14, 14);
+      if (st.state === 'PARACHUTE' || st.state === 'LANDED') chute(ctx, sx, sy, C.g);
+      ctx.fillStyle = C.g; ctx.fillText('CANSAT', sx, sy + 26);
+      // link line and packets
+      const ax = gx + 12, ay = gy - 18, bx = sx - 10, by = sy + 2;
+      ctx.setLineDash([3, 5]); ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      const t = reduced ? 9000 : now;
+      for (let k = 0; k < 3; k++) { // uplink commands
+        const q = ((t / 1500) + k / 3) % 1;
+        ctx.fillStyle = C.s; ctx.fillRect(ax + (bx - ax) * q - 3, ay + (by - ay) * q - 11, 6, 6);
+      }
+      for (let k = 0; k < 7; k++) { // downlink telemetry
+        const q = ((t / 1100) + k / 7) % 1;
+        ctx.fillStyle = C.g; ctx.beginPath(); ctx.arc(bx + (ax - bx) * q, by + (ay - by) * q + 9, 2.8, 0, Math.PI * 2); ctx.fill();
+      }
+      const elapsed = Math.floor(t / 1000);
+      ctx.textAlign = 'left'; ctx.font = '600 11px "JetBrains Mono", monospace';
+      const cx0 = Math.max(gx + 66, w / 2 - 70);
+      ctx.fillStyle = C.s; ctx.fillText(`▲ UPLINK    commands   ${Math.floor(t / 1500) % 10000}`, cx0, h - 34);
+      ctx.fillStyle = C.g; ctx.fillText(`▼ DOWNLINK  telemetry  ${(elapsed * 4) % 100000}`, cx0, h - 16);
+      ctx.fillStyle = C.ink; ctx.fillText('LOSS 0.0%', 12, 20);
+      if (!reduced) requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+  })();
+
+  // the telemetry readout under the two views follows the same flight
   (() => {
     const alt = $('t-alt'), vel = $('t-vel'), temp = $('t-temp'), loss = $('t-loss'), spark = $('t-spark');
     if (!alt) return;
-    let a = 700, tC = 24, sctx, sw, sh;
+    let sctx, sw, sh, tC = 24;
     const hist = [];
     const setupSpark = () => { if (!spark || reduced) return; const d = fit(spark); sctx = d.ctx; sw = d.w; sh = d.h; };
     setupSpark();
     window.addEventListener('resize', setupSpark);
     const update = () => {
-      const v = 5 + Math.random() * 2; // parachute descent, m/s
-      a -= v * 1.2;
-      if (a <= 0) a = 700; // next drop
+      const st = flight(flightNow());
       tC = Math.max(16, Math.min(31, tC + (Math.random() - 0.5) * 0.6));
-      alt.textContent = a.toFixed(0);
-      vel.textContent = v.toFixed(1);
+      alt.textContent = st.alt.toFixed(0);
+      vel.textContent = Math.abs(st.vel).toFixed(1);
       temp.textContent = tC.toFixed(1);
       loss.textContent = '0.0';
-      hist.push(a); if (hist.length > 60) hist.shift();
+      hist.push(st.alt); if (hist.length > 60) hist.shift();
       if (!sctx || hist.length < 2) return;
-      const light = document.documentElement.getAttribute('data-theme') === 'light';
       sctx.clearRect(0, 0, sw, sh);
       sctx.beginPath();
       hist.forEach((y, i) => { const x = (i / (hist.length - 1)) * sw, yy = sh - (y / 700) * sh * 0.85 - sh * 0.05; i ? sctx.lineTo(x, yy) : sctx.moveTo(x, yy); });
-      sctx.strokeStyle = light ? '#0a7a45' : '#3dff9a'; sctx.lineWidth = 1.5; sctx.stroke();
+      sctx.strokeStyle = simColors().g; sctx.lineWidth = 1.5; sctx.stroke();
     };
     update();
-    setInterval(update, reduced ? 3000 : 1200);
+    setInterval(update, reduced ? 3000 : 400);
   })();
 
   /* ---------- Focus card mini-visuals ---------- */
@@ -626,7 +713,7 @@ window.__variant = (() => {
       '.about-copy', '.timeline', '.explorer', '.edu-strip', '.team-strip', '.contact-copy',
       '.termsheet', '.quote', '.holdings-wrap', '.term-bar', '.act-tag'];
     document.querySelectorAll(solo.join(',')).forEach((el) => el.classList.add('reveal'));
-    const groups = ['.impact', '.cards', '.stack-grid', '.work-grid', '.beyond-grid', '.tombs', '.edu-grid', '.mission-grid'];
+    const groups = ['.impact', '.cards', '.stack-grid', '.work-grid', '.beyond-grid', '.tombs', '.edu-grid', '.mission-grid', '.sim-grid'];
     groups.forEach((sel) => {
       document.querySelectorAll(sel).forEach((g) => {
         [...g.children].forEach((c, i) => {
@@ -1323,14 +1410,14 @@ window.__variant = (() => {
     ['campus', 'CVSPK', 'CVSPK Scholarship', 'NSUT, top 5% of 1,280+', '100% tuition waiver', 'Merit', '2022'],
     ['campus', 'RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10, World #106', 'Coding', '2021'],
     ['campus', 'NCC', "NCC 'A' Certificate", '4 Delhi Battalion NCC', 'Awarded', 'Service', '2016'],
-    ['campus', 'ZNL', 'Delhi region Basketball Zonals', 'School team', 'Winner', 'Sport', '2015'],
     ['campus', 'MUN', "AMIMUN'20 · SYMUNC'19", 'Model United Nations', 'Best Delegate, Special Mention', 'Debate', '2019 to 2020'],
     ['other', 'CNST', 'CanSat 2021', 'NASA, Lockheed Martin, US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
     ['other', 'NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10, Rank 3/147', 'Academics', '2023'],
     ['other', 'BRVO', 'Bravo Award ×2', 'LinkedIn, incident response capabilities', 'Sole recipient among 4', 'Engineering', '2023 to 2025'],
     ['fin', 'CAT', 'CAT 2022', 'VARC 99.97 %ile, 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
     ['fin', 'XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund, full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
-    ['fin', 'SNGR', "Sangharsh'26", 'Inter-IIM sports tournament, basketball', 'Silver', 'Sport', '2026'],
+    ['fin', 'SNGR', "Sangharsh'26", 'Inter-IIM sports tournament (IIM A, B, C, L), basketball', 'Silver medal', 'Sport', '2026'],
+    ['fin', 'SHRY', 'Shaurya 2025', 'Inter-college sports tournament, colleges and universities in Gujarat', 'Silver medal', 'Sport', '2025'],
     ['fin', 'YLGR', 'Yalgaar', 'IIM Ahmedabad basketball tournament', 'Runner-up', 'Sport', '2025'],
     ['fin', 'PMD', 'PM Dissect', 'ProdMan Club, IIM A: 99 teams, 219 participants', 'Top 25, semi-finalist', 'Product', '2025'],
   ];
