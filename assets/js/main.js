@@ -3,6 +3,76 @@
    Vanilla JS canvas/SVG animations. No dependencies.
    ========================================================= */
 
+/* ---------- Shared helpers (script scope, used by every block below) ---------- */
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const smooth = (t) => t * t * (3 - 2 * t);
+const lerp = (a, b, t) => a + (b - a) * t;
+const hexToRgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const mixHex = (a, b, t) => {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`;
+};
+// Every string that goes into innerHTML passes through esc(), so content edits can use < > & " ' freely.
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
+
+// Canvas colours that follow the light / dark theme.
+const INK = {
+  dark:  { green: '#4ade80', cyan: '#38e1ff', blue: '#38bdf8', violet: '#a78bfa', violet2: '#7c5cff', amber: '#fbbf24', red: '#f87171', node: '#0a0e17', topic: '#1a1433', wire: 'rgba(120,150,200,0.15)' },
+  light: { green: '#157a3c', cyan: '#0c7597', blue: '#0369a1', violet: '#7a52d8', violet2: '#6636e6', amber: '#a86a00', red: '#c0392b', node: '#fbfcfe', topic: '#efeafc', wire: 'rgba(40,60,100,0.22)' },
+};
+const ink = () => INK[isLight() ? 'light' : 'dark'];
+
+// Run a canvas animation only while its element is on screen (rAF already pauses in hidden tabs).
+const animate = (el, frame) => {
+  const hasIO = 'IntersectionObserver' in window;
+  let visible = !hasIO, raf = 0;
+  const tick = (ts) => { raf = 0; if (!visible) return; frame(ts); raf = requestAnimationFrame(tick); };
+  const kick = () => { if (visible && !raf) raf = requestAnimationFrame(tick); };
+  if (hasIO) {
+    new IntersectionObserver((entries) => { visible = entries[entries.length - 1].isIntersecting; kick(); },
+      { rootMargin: '120px' }).observe(el);
+  }
+  kick();
+};
+
+// The one illustrative CanSat flight every view reads. f runs 0 -> 1: pad, rocket ascent,
+// apogee and separation, free descent, parachute, touchdown. Apogee is 700 m.
+const FLIGHT_MS = 16000;
+const flight = (f) => {
+  if (f < 0.06) return { alt: 0, vel: 0, state: 'PAD' };
+  if (f < 0.2) { const k = (f - 0.06) / 0.14; return { alt: 700 * Math.sin(k * Math.PI / 2), vel: -60 * Math.cos(k * Math.PI / 2), state: 'ASCENT' }; }
+  if (f < 0.24) return { alt: 700, vel: 0, state: 'APOGEE' };
+  if (f < 0.45) { const k = (f - 0.24) / 0.21; return { alt: 700 - 300 * k, vel: 14, state: 'DESCENT' }; }
+  if (f < 0.92) { const k = (f - 0.45) / 0.47; return { alt: 400 * (1 - k), vel: 5.8, state: 'PARACHUTE' }; }
+  return { alt: 0, vel: 0, state: 'LANDED' };
+};
+
+// Title, legend swatches and x-axis label shared by the two pivot charts.
+// items: [kind, colour, label] with kind 'bar' | 'line' | 'dot'.
+const drawLegend = (ctx, { alpha, title, items, xLabel, x, h, txt, sub }) => {
+  if (alpha <= 0.01) return;
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = 'left';
+  ctx.font = '600 12px "JetBrains Mono", monospace';
+  ctx.fillStyle = txt;
+  ctx.fillText(title, x, 18);
+  ctx.font = '10px "JetBrains Mono", monospace';
+  let lx = x;
+  items.forEach(([kind, color, label]) => {
+    ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 2;
+    if (kind === 'line') { ctx.beginPath(); ctx.moveTo(lx, 30); ctx.lineTo(lx + 12, 30); ctx.stroke(); }
+    else if (kind === 'dot') { ctx.beginPath(); ctx.arc(lx + 6, 30, 3.5, 0, Math.PI * 2); ctx.fill(); }
+    else ctx.fillRect(lx + 2, 25, 8, 10);
+    ctx.fillStyle = sub;
+    ctx.fillText(label, lx + 17, 34);
+    lx += 17 + ctx.measureText(label).width + 16;
+  });
+  ctx.fillText(xLabel, x, h - 8);
+  ctx.globalAlpha = 1;
+};
+
 // Shared state. Each pivot reports 0 → 1 as you scroll through it:
 // __mix1 (campus → engineering) and __mix2 (engineering → finance).
 // __phase = __mix1 + __mix2 runs 0 (campus) → 1 (engineering) → 2 (finance).
@@ -29,42 +99,8 @@ window.__updateMode = (() => {
   };
 })();
 
-/* ---------- Layout variants (preview): ?honors=split|epilogue|chart ---------- */
-window.__variant = (() => {
-  const q = new URLSearchParams(location.search);
-  const pick = (k, allowed, dflt) => (allowed.includes(q.get(k)) ? q.get(k) : dflt);
-  const v = {
-    honors: pick('honors', ['split', 'epilogue', 'chart'], 'split'),
-  };
-  document.querySelectorAll('[data-variant]').forEach((el) => {
-    const [k, val] = el.dataset.variant.split(':');
-    el.hidden = v[k] !== val;
-  });
-  // the leadership panel sits in Act I
-  const tpl = document.getElementById('lead-template');
-  const slot = document.getElementById('lead-slot');
-  if (tpl && slot) slot.appendChild(tpl.content.firstElementChild.cloneNode(true));
-  // number the visible sections in reading order
-  let n = 0;
-  document.querySelectorAll('.section-index').forEach((el) => {
-    if (el.closest('[hidden]')) return;
-    n += 1;
-    el.textContent = String(n).padStart(2, '0');
-  });
-  // a small switcher so variants can be compared side by side
-  if (q.has('honors') || q.has('preview')) {
-    const link = (h, label) => `<a href="?honors=${h}"${h === v.honors ? ' class="on"' : ''}>${label}</a>`;
-    const box = document.createElement('div');
-    box.className = 'variant-switch';
-    box.innerHTML = `<b>preview</b> honors: ${link('split', 'split')}${link('epilogue', 'epilogue')}${link('chart', 'chart only')}`;
-    document.body.appendChild(box);
-  }
-  return v;
-})();
-
 (() => {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = (id) => document.getElementById(id);
 
   /* ---------- Year ---------- */
@@ -138,10 +174,8 @@ window.__variant = (() => {
       dark:  { up: '#22c55e', down: '#ef4444', flat: '#ffa31a' },
       light: { up: '#15803d', down: '#c62828', flat: '#a35a00' },
     };
-    let theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-    window.addEventListener('themechange', () => {
-      theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-    });
+    let theme = isLight() ? 'light' : 'dark';
+    window.addEventListener('themechange', () => { theme = isLight() ? 'light' : 'dark'; });
     // campus: a labelled CanSat packet table (illustrative). The newest packet enters at the top,
     // lit like a live feed; flight-phase changes print as event lines; a status strip and the
     // mission clock sit above the column header.
@@ -152,17 +186,11 @@ window.__variant = (() => {
     const TCOLS = [['TEAM', 0], ['MISSION_TIME', 58], ['PKT', 166], ['ALT_m', 210], ['', 270], ['PRESS_hPa', 324], ['TEMP_C', 404], ['VOLT', 464], ['SATS', 514], ['STATE', 556], ['CRC', 656]];
     const TABLE_W = 720, ROW_H = 15, BAR_W = 44;
     const EVENTS = { ASCENT: 'LIFTOFF', APOGEE: 'APOGEE REACHED', DESCENT: 'SEPARATION', PARACHUTE: 'PARACHUTE DEPLOYED', LANDED: 'TOUCHDOWN', LAUNCH_WAIT: 'ON THE PAD' };
-    // one packet per second over a looping ~5 minute flight
+    // one packet per second over a looping 5 minute replay of the shared flight
     const flightAt = (n) => {
       const t = ((n % 300) + 300) % 300;
-      let alt, state;
-      if (t < 4) { alt = 0; state = 'LAUNCH_WAIT'; }
-      else if (t < 22) { alt = 700 * Math.sin(((t - 4) / 18) * Math.PI / 2); state = 'ASCENT'; }
-      else if (t < 26) { alt = 700; state = 'APOGEE'; }
-      else if (t < 120) { alt = 700 - (t - 26) * 3.2; state = 'DESCENT'; }
-      else if (t < 288) { alt = Math.max(0, 400 - (t - 120) * 2.4); state = 'PARACHUTE'; }
-      else { alt = 0; state = 'LANDED'; }
-      return { t, alt, state };
+      const f = flight(t / 300);
+      return { t, alt: f.alt, state: f.state === 'PAD' ? 'LAUNCH_WAIT' : f.state };
     };
     const clock = (t) => `00:${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
     const packet = (n) => {
@@ -241,17 +269,19 @@ window.__variant = (() => {
       return { d: dir, s: `${rnd(SYM).padEnd(9)} ${px.padStart(9)} ${arrow} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%` };
     };
     const line = () => ({ log: logLine(), tape: tapeLine() });
+    // Phones fire resize whenever the address bar shows or hides. Columns that already
+    // exist keep their place and text; only new columns or extra rows are filled in.
     const setup = () => {
       const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
       const fontH = 15, colW = 250;
-      const cols = Math.ceil(w / colW);
-      drops = Array.from({ length: cols }, (_, i) => ({
-        x: i * colW + 12,
-        y: Math.random() * h,
-        speed: 0.4 + Math.random() * 0.9,
-        fontH,
-        lines: Array.from({ length: Math.ceil(h / fontH) + 2 }, line),
-      }));
+      const cols = Math.ceil(w / colW), rows = Math.ceil(h / fontH) + 2;
+      const old = drops || [];
+      drops = Array.from({ length: cols }, (_, i) => {
+        const col = old[i] || { x: i * colW + 12, y: Math.random() * fontH, speed: 0.4 + Math.random() * 0.9, fontH, lines: [] };
+        while (col.lines.length < rows) col.lines.push(line());
+        col.lines.length = rows;
+        return col;
+      });
     };
     setup();
     window.addEventListener('resize', setup);
@@ -296,12 +326,13 @@ window.__variant = (() => {
     const canvas = $('pipeline');
     if (!canvas || reduced) return;
     let ctx, w, h, nodeR = 13, labelFont = 11, stagger = false;
+    // colours are INK keys so the canvas follows the theme
     const stages = [
-      { name: 'producers', color: '#4ade80' },
-      { name: 'emitter', color: '#38e1ff' },
-      { name: 'kafka', color: '#a78bfa' },
-      { name: 'events platform', color: '#38e1ff' },
-      { name: 'query', color: '#7c5cff' },
+      { name: 'producers', color: 'green' },
+      { name: 'emitter', color: 'cyan' },
+      { name: 'kafka', color: 'violet' },
+      { name: 'events platform', color: 'cyan' },
+      { name: 'query', color: 'violet2' },
     ];
     let nodes = [], packets = [];
     let labelColor = 'rgba(230,236,245,0.72)';
@@ -330,16 +361,17 @@ window.__variant = (() => {
         seg: 0, t: 0,
         speed: 0.008 + Math.random() * 0.01,
         r: 2.5 + Math.random() * 2,
-        color: isErr ? '#f87171' : (Math.random() < 0.4 ? '#a78bfa' : '#4ade80'),
+        color: isErr ? 'red' : (Math.random() < 0.4 ? 'violet' : 'green'),
         wob: Math.random() * Math.PI * 2,
       });
     };
     let spawnAcc = 0;
     const draw = (ts) => {
+      const C = ink();
       ctx.clearRect(0, 0, w, h);
       for (let i = 0; i < nodes.length - 1; i++) {
         const a = nodes[i], b = nodes[i + 1];
-        ctx.strokeStyle = 'rgba(120,150,200,0.15)'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = C.wire; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
       spawnAcc += 1;
@@ -352,17 +384,17 @@ window.__variant = (() => {
         const x = a.x + (b.x - a.x) * p.t;
         const y = a.y + Math.sin(ts * 0.002 + p.wob) * 10;
         ctx.beginPath();
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color; ctx.shadowBlur = 10;
+        ctx.fillStyle = C[p.color];
+        ctx.shadowColor = C[p.color]; ctx.shadowBlur = 10;
         ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
       }
       nodes.forEach((n, i) => {
         const pulse = 1 + Math.sin(ts * 0.003 + n.x) * 0.12;
         ctx.beginPath();
-        ctx.fillStyle = '#0a0e17';
-        ctx.strokeStyle = n.color; ctx.lineWidth = 2;
-        ctx.shadowColor = n.color; ctx.shadowBlur = 14;
+        ctx.fillStyle = C.node;
+        ctx.strokeStyle = C[n.color]; ctx.lineWidth = 2;
+        ctx.shadowColor = C[n.color]; ctx.shadowBlur = 14;
         ctx.arc(n.x, n.y, nodeR * pulse, 0, Math.PI * 2);
         ctx.fill(); ctx.stroke();
         ctx.shadowBlur = 0;
@@ -373,9 +405,8 @@ window.__variant = (() => {
         const ly = below ? n.y + nodeR + labelFont + 5 : n.y - nodeR - 8;
         ctx.fillText(n.name, n.x, ly);
       });
-      requestAnimationFrame(draw);
     };
-    requestAnimationFrame(draw);
+    animate(canvas, draw);
   })();
 
   /* ---------- Live metrics + sparkline (simulated) ---------- */
@@ -402,10 +433,11 @@ window.__variant = (() => {
         const y = sh - ((v - min) / range) * (sh * 0.8) - sh * 0.1;
         i === 0 ? sctx.moveTo(x, y) : sctx.lineTo(x, y);
       });
-      sctx.strokeStyle = '#38e1ff'; sctx.lineWidth = 1.5; sctx.stroke();
+      const cyan = ink().cyan, rgb = hexToRgb(cyan).join(',');
+      sctx.strokeStyle = cyan; sctx.lineWidth = 1.5; sctx.stroke();
       sctx.lineTo(sw, sh); sctx.lineTo(0, sh); sctx.closePath();
       const g = sctx.createLinearGradient(0, 0, 0, sh);
-      g.addColorStop(0, 'rgba(56,225,255,0.25)'); g.addColorStop(1, 'rgba(56,225,255,0)');
+      g.addColorStop(0, `rgba(${rgb},0.25)`); g.addColorStop(1, `rgba(${rgb},0)`);
       sctx.fillStyle = g; sctx.fill();
     };
     const update = () => {
@@ -423,24 +455,13 @@ window.__variant = (() => {
     };
     update();
     setInterval(update, reduced ? 3000 : 1200);
+    window.addEventListener('themechange', drawSpark);
   })();
 
-  /* ---------- Mission summary: one shared illustrative flight drives three views ---------- */
-  // f runs 0 -> 1 over one flight: pad, rocket ascent, apogee and separation, free descent,
-  // parachute, touchdown. The replay, the ground-station link and the readout all read it.
-  const FLIGHT_MS = 16000;
-  const flight = (f) => {
-    if (f < 0.06) return { alt: 0, vel: 0, state: 'PAD' };
-    if (f < 0.2) { const k = (f - 0.06) / 0.14; return { alt: 700 * Math.sin(k * Math.PI / 2), vel: -60 * Math.cos(k * Math.PI / 2), state: 'ASCENT' }; }
-    if (f < 0.24) return { alt: 700, vel: 0, state: 'APOGEE' };
-    if (f < 0.45) { const k = (f - 0.24) / 0.21; return { alt: 700 - 300 * k, vel: 14, state: 'DESCENT' }; }
-    if (f < 0.92) { const k = (f - 0.45) / 0.47; return { alt: 400 * (1 - k), vel: 5.8, state: 'PARACHUTE' }; }
-    return { alt: 0, vel: 0, state: 'LANDED' };
-  };
+  /* ---------- Mission summary: the shared flight() drives the replay, the link view and the readout ---------- */
   const flightNow = () => (reduced ? 0.6 : ((performance.now() % FLIGHT_MS) / FLIGHT_MS));
   const simColors = () => {
-    const light = document.documentElement.getAttribute('data-theme') === 'light';
-    return light
+    return isLight()
       ? { g: '#0a7a45', s: '#0369a1', a: '#a86a00', dim: 'rgba(10,122,69,0.35)', faint: 'rgba(10,122,69,0.15)', ink: '#101a2e', sub: '#47536b', bg: '#fbfcfe' }
       : { g: '#3dff9a', s: '#38bdf8', a: '#fbbf24', dim: 'rgba(61,255,154,0.4)', faint: 'rgba(61,255,154,0.15)', ink: '#e6ecf5', sub: '#8a97ad', bg: '#06101c' };
   };
@@ -455,7 +476,6 @@ window.__variant = (() => {
     const canvas = $('flight-sim'); if (!canvas) return;
     let ctx, w, h;
     const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
-    setup(); window.addEventListener('resize', setup);
     const EV = [['LAUNCH', 0.06], ['APOGEE', 0.2], ['PARACHUTE', 0.45], ['LANDED', 0.92]];
     const draw = () => {
       const C = simColors(), f = flightNow();
@@ -490,9 +510,10 @@ window.__variant = (() => {
         ctx.fillText(label, ex, h - 10);
       });
       ctx.textAlign = 'left';
-      if (!reduced) requestAnimationFrame(draw);
     };
-    requestAnimationFrame(draw);
+    // sizing a canvas clears it, so every resize redraws (matters when motion is reduced and nothing loops)
+    setup(); window.addEventListener('resize', () => { setup(); draw(); });
+    if (reduced) { draw(); window.addEventListener('themechange', draw); } else animate(canvas, draw);
   })();
 
   // B · ground-station link: commands up, telemetry down
@@ -500,8 +521,7 @@ window.__variant = (() => {
     const canvas = $('link-sim'); if (!canvas) return;
     let ctx, w, h;
     const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
-    setup(); window.addEventListener('resize', setup);
-    const draw = (now) => {
+    const draw = (now = performance.now()) => {
       const C = simColors(), f = flightNow(), st = flight(f);
       ctx.clearRect(0, 0, w, h);
       const gx = 56, gy = h - 62, sx = w - 70, sy = 46 + (1 - st.alt / 700) * (h - 150);
@@ -532,9 +552,9 @@ window.__variant = (() => {
       ctx.fillStyle = C.s; ctx.fillText(`▲ UPLINK    commands   ${Math.floor(t / 1500) % 10000}`, cx0, h - 34);
       ctx.fillStyle = C.g; ctx.fillText(`▼ DOWNLINK  telemetry  ${(elapsed * 4) % 100000}`, cx0, h - 16);
       ctx.fillStyle = C.ink; ctx.fillText('LOSS 0.0%', 12, 20);
-      if (!reduced) requestAnimationFrame(draw);
     };
-    requestAnimationFrame(draw);
+    setup(); window.addEventListener('resize', () => { setup(); draw(); });
+    if (reduced) { draw(); window.addEventListener('themechange', () => draw()); } else animate(canvas, draw);
   })();
 
   // the telemetry readout under the two views follows the same flight
@@ -576,60 +596,61 @@ window.__variant = (() => {
   (() => {
     const host = $('viz-logs'); if (!host || reduced) return;
     const canvas = miniCanvas(host); let ctx, w, h, bars;
-    const cols = ['#4ade80', '#38bdf8', '#fbbf24', '#f87171'];
+    const cols = ['green', 'blue', 'amber', 'red'];
     const setup = () => { const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
       bars = Array.from({ length: 22 }, () => ({ v: Math.random(), c: cols[(Math.random() * cols.length) | 0] })); };
     setup(); window.addEventListener('resize', setup);
     let acc = 0;
     const draw = () => {
+      const C = ink();
       ctx.clearRect(0, 0, w, h);
       if (++acc > 8) { acc = 0; bars.shift(); bars.push({ v: Math.random(), c: cols[(Math.random() * cols.length) | 0] }); }
       const bw = w / bars.length;
       bars.forEach((b, i) => {
         const bh = b.v * h * 0.85 + 4;
-        ctx.fillStyle = b.c; ctx.globalAlpha = 0.75;
+        ctx.fillStyle = C[b.c]; ctx.globalAlpha = 0.75;
         ctx.fillRect(i * bw + 1, h - bh, bw - 2, bh);
       });
       ctx.globalAlpha = 1;
-      requestAnimationFrame(draw);
     };
-    requestAnimationFrame(draw);
+    animate(canvas, draw);
   })();
 
   // Events: producers fan in to one topic, which fans out to consumers
   (() => {
     const host = $('viz-events'); if (!host || reduced) return;
-    const canvas = miniCanvas(host); let ctx, w, h, P, T, C;
+    const canvas = miniCanvas(host); let ctx, w, h, P, T, Cn;
     const setup = () => {
       const d = fit(canvas); ctx = d.ctx; w = d.w; h = d.h;
       P = [0.2, 0.4, 0.6, 0.8].map((v) => [w * 0.1, h * v]);
       T = [w * 0.5, h * 0.5];
-      C = [0.3, 0.7].map((v) => [w * 0.9, h * v]);
+      Cn = [0.3, 0.7].map((v) => [w * 0.9, h * v]);
     };
     setup(); window.addEventListener('resize', setup);
     const draw = (t) => {
+      const C = ink();
       ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = 'rgba(167,139,250,0.22)'; ctx.lineWidth = 1;
-      [...P.map((p) => [p, T]), ...C.map((c) => [T, c])].forEach(([a, b]) => {
+      ctx.strokeStyle = C.violet; ctx.globalAlpha = 0.25; ctx.lineWidth = 1;
+      [...P.map((p) => [p, T]), ...Cn.map((c) => [T, c])].forEach(([a, b]) => {
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
       });
+      ctx.globalAlpha = 1;
       for (let k = 0; k < 8; k++) {
         const ph = ((t / 1400) + k / 8) % 1;
-        const [a, b, f] = ph < 0.5 ? [P[k % 4], T, ph * 2] : [T, C[k % 2], (ph - 0.5) * 2];
-        ctx.fillStyle = k % 3 ? '#a78bfa' : '#4ade80';
+        const [a, b, f] = ph < 0.5 ? [P[k % 4], T, ph * 2] : [T, Cn[k % 2], (ph - 0.5) * 2];
+        ctx.fillStyle = k % 3 ? C.violet : C.green;
         ctx.beginPath(); ctx.arc(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 2.6, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.strokeStyle = '#a78bfa';
-      [...P, ...C].forEach((n) => {
-        ctx.beginPath(); ctx.fillStyle = '#0a0e17'; ctx.arc(n[0], n[1], 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = C.violet;
+      [...P, ...Cn].forEach((n) => {
+        ctx.beginPath(); ctx.fillStyle = C.node; ctx.arc(n[0], n[1], 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       });
-      ctx.fillStyle = '#1a1433'; ctx.lineWidth = 2;
-      ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 10;
+      ctx.fillStyle = C.topic; ctx.lineWidth = 2;
+      ctx.shadowColor = C.violet; ctx.shadowBlur = 10;
       ctx.beginPath(); ctx.roundRect(T[0] - 16, T[1] - 10, 32, 20, 4); ctx.fill(); ctx.stroke();
       ctx.shadowBlur = 0; ctx.lineWidth = 1;
-      requestAnimationFrame(draw);
     };
-    requestAnimationFrame(draw);
+    animate(canvas, draw);
   })();
 
   // Reliability: SLO line
@@ -641,17 +662,17 @@ window.__variant = (() => {
     const pts = Array.from({ length: 40 }, () => 0.5);
     let acc = 0;
     const draw = () => {
+      const C = ink();
       ctx.clearRect(0, 0, w, h);
       if (++acc > 4) { acc = 0; pts.shift(); pts.push(Math.max(0.1, Math.min(0.9, pts[pts.length - 1] + (Math.random() - 0.5) * 0.3))); }
-      ctx.strokeStyle = 'rgba(248,113,113,0.4)'; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = C.red; ctx.globalAlpha = 0.45; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(0, h * 0.25); ctx.lineTo(w, h * 0.25); ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
       ctx.beginPath();
       pts.forEach((p, i) => { const x = (i / (pts.length - 1)) * w, y = h - p * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-      ctx.strokeStyle = '#38e1ff'; ctx.lineWidth = 2; ctx.stroke();
-      requestAnimationFrame(draw);
+      ctx.strokeStyle = C.cyan; ctx.lineWidth = 2; ctx.stroke();
     };
-    requestAnimationFrame(draw);
+    animate(canvas, draw);
   })();
 
   /* ---------- Stack grid ---------- */
@@ -665,11 +686,11 @@ window.__variant = (() => {
       ['Alerting & dashboards', '#fbbf24'], ['Incident response', '#f87171'],
     ];
     grid.innerHTML = stack.map(([n, c]) =>
-      `<div class="stack-item"><span class="sdot" style="background:${c};box-shadow:0 0 8px ${c}"></span>${n}</div>`
+      `<div class="stack-item"><span class="sdot" style="background:${esc(c)};box-shadow:0 0 8px ${esc(c)}"></span>${esc(n)}</div>`
     ).join('');
   })();
 
-  /* ---------- Traces: builds, hackathons, competitions ---------- */
+  /* ---------- Side missions: hackathons and competitions ---------- */
   (() => {
     const grid = $('work-grid'); if (!grid) return;
     const tagColor = (t) => ({
@@ -698,11 +719,11 @@ window.__variant = (() => {
     grid.innerHTML = items.map((r) => `
       <article class="work-card">
         <div class="work-top">
-          <span class="work-name">${r.name}</span>
-          <span class="work-owner">${r.owner}</span>
+          <span class="work-name">${esc(r.name)}</span>
+          <span class="work-owner">${esc(r.owner)}</span>
         </div>
-        <p class="work-desc">${r.description}</p>
-        <div class="work-lang"><span class="sdot" style="width:9px;height:9px;border-radius:50%;background:${tagColor(r.tag)}"></span>${r.tag}<span style="margin-left:auto" class="work-prize">${r.prize}</span></div>
+        <p class="work-desc">${esc(r.description)}</p>
+        <div class="work-lang"><span class="sdot" style="width:9px;height:9px;border-radius:50%;background:${tagColor(r.tag)}"></span>${esc(r.tag)}<span style="margin-left:auto" class="work-prize">${esc(r.prize)}</span></div>
       </article>`).join('');
   })();
 
@@ -710,7 +731,7 @@ window.__variant = (() => {
   (() => {
     if (reduced || !('IntersectionObserver' in window)) return;
     const solo = ['.hero-inner', '.pipeline-wrap', '.metrics-bar', '.section-head',
-      '.about-copy', '.timeline', '.explorer', '.edu-strip', '.team-strip', '.contact-copy',
+      '.about-copy', '.timeline', '.explorer', '.team-strip', '.contact-copy',
       '.termsheet', '.quote', '.holdings-wrap', '.term-bar', '.act-tag'];
     document.querySelectorAll(solo.join(',')).forEach((el) => el.classList.add('reveal'));
     const groups = ['.impact', '.cards', '.stack-grid', '.work-grid', '.beyond-grid', '.tombs', '.edu-grid', '.mission-grid', '.sim-grid'];
@@ -803,15 +824,13 @@ window.__variant = (() => {
         'Converted to a pre-placement offer' ] },
   ];
 
-  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
   const rowHtml = (e, i) => `
-    <div class="log-row" data-i="${i}" data-tags="${e.tags.join(' ')}" role="listitem">
+    <div class="log-row" data-i="${i}" data-tags="${esc(e.tags.join(' '))}" role="listitem">
       <button class="lr-summary" type="button" aria-expanded="false" aria-controls="lr-det-${i}">
-        <span class="lr-ts">${e.ts}</span>
-        <span class="lr-lvl lvl-${e.level}">${e.level}</span>
+        <span class="lr-ts">${esc(e.ts)}</span>
+        <span class="lr-lvl lvl-${esc(e.level)}">${esc(e.level)}</span>
         <span class="lr-svc">${esc(e.company)}</span>
-        <span class="lr-msg"><span class="lr-caret" aria-hidden="true">▸</span><span class="lr-text"><span class="role">${esc(e.role)}</span>: ${esc(e.msg)}</span><span class="lr-dur">${e.dur}</span></span>
+        <span class="lr-msg"><span class="lr-caret" aria-hidden="true">▸</span><span class="lr-text"><span class="role">${esc(e.role)}</span>: ${esc(e.msg)}</span><span class="lr-dur">${esc(e.dur)}</span></span>
       </button>
       <div class="lr-details" id="lr-det-${i}"><ul>${e.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></div>
     </div>`;
@@ -874,7 +893,6 @@ window.__variant = (() => {
    ========================================================= */
 (() => {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const wraps = [...document.querySelectorAll('.impact')];
   if (!wraps.length) return;
   const fmt = (v, dec, prefix, suffix) =>
@@ -910,16 +928,10 @@ window.__variant = (() => {
    ========================================================= */
 (() => {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = (id) => document.getElementById(id);
   const section = $('pivot'), canvas = $('pivot-canvas');
   if (!section || !canvas) return;
-  const root = document.documentElement;
   const bar = $('pivot-bar'), readout = $('pivot-readout'), kicker = $('pivot-kicker');
-
-  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-  const smooth = (t) => t * t * (3 - 2 * t);
-  const lerp = (a, b, t) => a + (b - a) * t;
 
   // deterministic data so the morph looks the same every visit
   let seed = 7;
@@ -942,17 +954,11 @@ window.__variant = (() => {
   setup();
   window.addEventListener('resize', () => { setup(); draw(lastP); });
 
-  const hexToRgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-  const mixHex = (a, b, t) => {
-    const A = hexToRgb(a), B = hexToRgb(b);
-    return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`;
-  };
-
   let lastP = 0;
   const draw = (p) => {
     if (!ctx) return;
     lastP = p;
-    const light = root.getAttribute('data-theme') === 'light';
+    const light = isLight();
     const UP = light ? '#0a8f4a' : '#00d26a', DN = light ? '#d0302a' : '#ff3b30';
     const BAR = light ? '#0c7597' : '#38e1ff';
     const gridC = p < 0.5
@@ -986,28 +992,9 @@ window.__variant = (() => {
     // chart title, legend and x-axis label crossfade between the two readings
     const k = smooth(clamp((p - 0.4) / 0.2));
     const txt = light ? '#101a2e' : '#e6ecf5', sub = light ? '#47536b' : '#8a97ad';
-    const legend = (alpha, title, items, xLabel) => {
-      if (alpha <= 0.01) return;
-      ctx.globalAlpha = alpha;
-      ctx.textAlign = 'left';
-      ctx.font = '600 12px "JetBrains Mono", monospace';
-      ctx.fillStyle = txt;
-      ctx.fillText(title, padL + 4, 18);
-      ctx.font = '10px "JetBrains Mono", monospace';
-      let lx = padL + 4;
-      items.forEach(([kind, color, label]) => {
-        ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 2;
-        if (kind === 'line') { ctx.beginPath(); ctx.moveTo(lx, 30); ctx.lineTo(lx + 12, 30); ctx.stroke(); }
-        else ctx.fillRect(lx + 2, 25, 8, 10);
-        ctx.fillStyle = sub;
-        ctx.fillText(label, lx + 17, 34);
-        lx += 17 + ctx.measureText(label).width + 16;
-      });
-      ctx.fillText(xLabel, padL + 4, h - 8);
-      ctx.globalAlpha = 1;
-    };
-    legend(1 - k, 'Daily log volume (PB)', [['bar', light ? '#0c7597' : '#38e1ff', 'one bar = one day of ingestion']], 'days →');
-    legend(k, 'VBHV price (illustrative)', [['bar', UP, 'up day'], ['bar', DN, 'down day'], ['line', light ? '#1b1307' : '#ffffff', '5-day average']], 'trading days →');
+    const lg = { x: padL + 4, h, txt, sub };
+    drawLegend(ctx, { ...lg, alpha: 1 - k, title: 'Daily log volume (PB)', items: [['bar', BAR, 'one bar = one day of ingestion']], xLabel: 'days →' });
+    drawLegend(ctx, { ...lg, alpha: k, title: 'VBHV price (illustrative)', items: [['bar', UP, 'up day'], ['bar', DN, 'down day'], ['line', light ? '#1b1307' : '#ffffff', '5-day average']], xLabel: 'trading days →' });
 
     data.forEach((d, i) => {
       const q = smooth(clamp((p - 0.12) * 1.6 - (i / N) * 0.5)); // staggered left → right
@@ -1084,21 +1071,14 @@ window.__variant = (() => {
    ========================================================= */
 (() => {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = (id) => document.getElementById(id);
   const section = $('liftoff'), canvas = $('liftoff-canvas');
   if (!section || !canvas) return;
-  const root = document.documentElement;
   const bar = $('liftoff-bar'), readout = $('liftoff-readout'), kicker = $('liftoff-kicker');
-  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-  const smooth = (t) => t * t * (3 - 2 * t);
-  const lerp = (a, b, t) => a + (b - a) * t;
   const vols = window.__pivotVols || Array.from({ length: 32 }, () => 0.5);
   const N = vols.length;
-  // illustrative flight: fast climb on the rocket, then a slow parachute descent
-  const altAt = (x) => (x < 0.2 ? Math.sin((x / 0.2) * Math.PI / 2) : 1 - Math.pow((x - 0.2) / 0.8, 1.15));
-  const hexToRgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-  const mixHex = (a, b, t) => { const A = hexToRgb(a), B = hexToRgb(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`; };
+  // the shared flight from liftoff to touchdown, as a 0..1 altitude across the chart
+  const altAt = (x) => flight(0.06 + x * 0.86).alt / 700;
 
   let ctx, w, h, lastP = 0;
   const setup = () => { const d = window.__fit(canvas); ctx = d.ctx; w = d.w; h = d.h; };
@@ -1107,7 +1087,7 @@ window.__variant = (() => {
   const draw = (p) => {
     if (!ctx) return;
     lastP = p;
-    const light = root.getAttribute('data-theme') === 'light';
+    const light = isLight();
     const GREEN = light ? '#0a7a45' : '#3dff9a', CYAN = light ? '#0c7597' : '#38e1ff';
     const txt = light ? '#101a2e' : '#e6ecf5', sub = light ? '#47536b' : '#8a97ad';
     ctx.clearRect(0, 0, w, h);
@@ -1125,23 +1105,9 @@ window.__variant = (() => {
     }
     ctx.globalAlpha = 1;
 
-    const legend = (alpha, title, items, xLabel) => {
-      if (alpha <= 0.01) return;
-      ctx.globalAlpha = alpha; ctx.textAlign = 'left';
-      ctx.font = '600 12px "JetBrains Mono", monospace'; ctx.fillStyle = txt; ctx.fillText(title, padL + 4, 18);
-      ctx.font = '10px "JetBrains Mono", monospace';
-      let lx = padL + 4;
-      items.forEach(([kind, color, label]) => {
-        ctx.fillStyle = color;
-        if (kind === 'dot') { ctx.beginPath(); ctx.arc(lx + 6, 30, 3.5, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(lx + 2, 25, 8, 10);
-        ctx.fillStyle = sub; ctx.fillText(label, lx + 17, 34);
-        lx += 17 + ctx.measureText(label).width + 16;
-      });
-      ctx.fillText(xLabel, padL + 4, h - 8);
-      ctx.globalAlpha = 1;
-    };
-    legend(1 - k, 'Altitude (m), CanSat flight profile (illustrative)', [['dot', GREEN, 'one telemetry packet']], 'mission time →');
-    legend(k, 'Daily log volume (PB)', [['bar', CYAN, 'one bar = one day of ingestion']], 'days →');
+    const lg = { x: padL + 4, h, txt, sub };
+    drawLegend(ctx, { ...lg, alpha: 1 - k, title: 'Altitude (m), CanSat flight profile (illustrative)', items: [['dot', GREEN, 'one telemetry packet']], xLabel: 'mission time →' });
+    drawLegend(ctx, { ...lg, alpha: k, title: 'Daily log volume (PB)', items: [['bar', CYAN, 'one bar = one day of ingestion']], xLabel: 'days →' });
 
     // the flight path fades as its packets drop into bars
     const pathA = 1 - smooth(clamp(p * 2.2));
@@ -1200,7 +1166,7 @@ window.__variant = (() => {
    ========================================================= */
 (() => {
   'use strict';
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (reduced) return;
   const SNAP_PX = 80;
   const GAP = 16; // space between the nav bar and a snapped heading
   const nav = document.querySelector('.nav');
@@ -1211,7 +1177,6 @@ window.__variant = (() => {
     const line = nav.getBoundingClientRect().height + (GAP);
     let best = null;
     targets.forEach((t) => {
-      if (t.closest('[hidden]')) return;
       const d = t.getBoundingClientRect().top - (t.classList.contains('snap-mark') ? line - GAP : line);
       if (Math.abs(d) <= SNAP_PX && Math.abs(d) > 2 && (!best || Math.abs(d) < Math.abs(best))) best = d;
     });
@@ -1278,25 +1243,10 @@ window.__variant = (() => {
     { t: 2026.58, v: 392, d: '2026', title: 'Campus Fund: Investment Partner',
       body: 'I back student founders from their earliest days, this time from the other side of the table.' },
   ];
-  const NOW = 2026.82;
-  if (window.__variant && window.__variant.honors === 'chart') {
-    [
-      { t: 2020.05, d: 'Jan 2020', title: "Best Delegate, AMIMUN'20",
-        body: "Best Delegate out of 100+ at AMIMUN'20, after a Special Mention at SYMUNC'19." },
-      { t: 2022.6, d: '2022', title: 'CVSPK Scholarship',
-        body: 'Top 5% of a batch of 1,280+ at NSUT, with a full tuition waiver in two of four years.' },
-      { t: 2025.85, d: '2025', title: 'PM Dissect semi-finalist',
-        body: 'Top 25 of 99 teams (219 participants) in the ProdMan Club case competition at IIM A.' },
-      { t: 2026.1, d: '2026', title: "Silver at Sangharsh'26",
-        body: 'Basketball silver at the inter-IIM sports tournament.' },
-    ].forEach((e) => EVENTS.push(e));
-    EVENTS.sort((a, b) => a.t - b.t);
-    EVENTS.forEach((e, i) => {
-      if (e.v !== undefined) return;
-      const prev = EVENTS[i - 1], next = EVENTS.slice(i + 1).find((x) => x.v !== undefined);
-      e.v = prev.v + (next.v - prev.v) * ((e.t - prev.t) / (next.t - prev.t));
-    });
-  }
+  // the chart runs to today (never earlier than the last plotted event)
+  const today = new Date();
+  const yearStart = new Date(today.getFullYear(), 0, 1), yearEnd = new Date(today.getFullYear() + 1, 0, 1);
+  const NOW = Math.max(2026.82, today.getFullYear() + (today - yearStart) / (yearEnd - yearStart));
 
   // monthly series through the events with small seeded wiggles
   let seed = 42;
@@ -1344,12 +1294,13 @@ window.__variant = (() => {
 
     const marks = evs.map((e) => {
       const yy = y(series.reduce((best, p) => Math.abs(p.t - e.t) < Math.abs(best.t - e.t) ? p : best).v);
-      return `<g class="q-mark${e.i === sel ? ' sel' : ''}" data-i="${e.i}" tabindex="0" role="button" aria-label="${e.d}: ${e.title}">
+      return `<g class="q-mark${e.i === sel ? ' sel' : ''}" data-i="${e.i}" tabindex="0" role="button" aria-pressed="${e.i === sel}" aria-label="${esc(e.d)}: ${esc(e.title)}">
         <line x1="${x(e.t)}" x2="${x(e.t)}" y1="${yy + 6}" y2="${H - padB}" stroke="var(--border)" stroke-dasharray="2 3"/>
         <circle cx="${x(e.t)}" cy="${yy}" r="5"/></g>`;
     }).join('');
 
-    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Illustrative price chart of Vaibhav's journey with event markers">
+    // role="group", not "img": an img hides its children, and the markers are buttons
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="group" aria-label="Illustrative price chart of Vaibhav's journey. Each marker is an event; arrow keys move between them.">
       <defs><linearGradient id="q-grad" x1="0" x2="0" y1="0" y2="1">
         <stop offset="0" stop-color="var(--accent)" stop-opacity="0.28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
       </linearGradient></defs>
@@ -1363,11 +1314,15 @@ window.__variant = (() => {
     $('q-chg').textContent = `▲ +${(last - first).toFixed(2)} (+${chg.toFixed(1)}%) ${range ? range + 'Y' : 'since 2017'}`;
 
     host.querySelectorAll('.q-mark').forEach((m) => {
-      const pick = () => { select(+m.dataset.i); };
-      m.addEventListener('click', pick);
-      m.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } });
+      const i = +m.dataset.i;
+      m.addEventListener('click', () => select(i));
+      m.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(i); }
+        else if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { ev.preventDefault(); select(i + (ev.key === 'ArrowRight' ? 1 : -1), true); }
+      });
     });
   };
+  const markFor = (i) => host.querySelector(`.q-mark[data-i="${i}"]`);
 
   const show = () => {
     const e = EVENTS[sel];
@@ -1375,14 +1330,29 @@ window.__variant = (() => {
     $('q-title').textContent = e.title;
     $('q-body').textContent = e.body;
   };
-  const select = (i) => {
+  // Selecting only restyles the markers. The chart is rebuilt just when the range has to widen,
+  // and focus is put back on the marker so keyboard users keep their place.
+  const select = (i, moveFocus) => {
+    const hadFocus = host.contains(document.activeElement);
     sel = (i + EVENTS.length) % EVENTS.length;
     const t0 = range ? NOW - range : 2017.0;
-    if (EVENTS[sel].t < t0) { range = 0; syncRanges(); }
     show();
-    render();
+    if (EVENTS[sel].t < t0) { range = 0; syncRanges(); render(); }
+    else {
+      host.querySelectorAll('.q-mark').forEach((m) => {
+        const on = +m.dataset.i === sel;
+        m.classList.toggle('sel', on);
+        m.setAttribute('aria-pressed', on);
+      });
+    }
+    const m = markFor(sel);
+    if (m && (moveFocus || (hadFocus && !host.contains(document.activeElement)))) m.focus();
   };
-  const syncRanges = () => document.querySelectorAll('.q-range').forEach((b) => b.classList.toggle('active', +b.dataset.r === range));
+  const syncRanges = () => document.querySelectorAll('.q-range').forEach((b) => {
+    const on = +b.dataset.r === range;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on);
+  });
   document.querySelectorAll('.q-range').forEach((b) => b.addEventListener('click', () => {
     range = +b.dataset.r; syncRanges();
     const t0 = range ? NOW - range : 2017.0;
@@ -1399,7 +1369,7 @@ window.__variant = (() => {
 })();
 
 /* =========================================================
-   Honors tables: one per act (split) or all in the epilogue
+   Honors tables: one per act
    ========================================================= */
 (() => {
   const H = [
@@ -1411,9 +1381,6 @@ window.__variant = (() => {
     ['campus', 'RPLY', 'Reply Code Challenge', '2,000+ teams', 'India #10, World #106', 'Coding', '2021'],
     ['campus', 'NCC', "NCC 'A' Certificate", '4 Delhi Battalion NCC', 'Awarded', 'Service', '2016'],
     ['campus', 'MUN', "AMIMUN'20 · SYMUNC'19", 'Model United Nations', 'Best Delegate, Special Mention', 'Debate', '2019 to 2020'],
-    ['other', 'CNST', 'CanSat 2021', 'NASA, Lockheed Martin, US NRL', 'Intl Rank 2 / 200+', 'Aerospace', '2021'],
-    ['other', 'NSUT', 'B.Tech, Information Technology', 'NSUT Delhi', '8.95/10, Rank 3/147', 'Academics', '2023'],
-    ['other', 'BRVO', 'Bravo Award ×2', 'LinkedIn, incident response capabilities', 'Sole recipient among 4', 'Engineering', '2023 to 2025'],
     ['fin', 'CAT', 'CAT 2022', 'VARC 99.97 %ile, 2.8L+ candidates', '99.89 %ile', 'Management', '2022'],
     ['fin', 'XCDN', 'Xceedance Scholarship', 'IIMA Endowment Fund, full 2nd-year fee', '~₹14 L', 'Merit', '2026'],
     ['fin', 'SNGR', "Sangharsh'26", 'Inter-IIM sports tournament (IIM A, B, C, L), basketball', 'Silver medal', 'Sport', '2026'],
@@ -1422,12 +1389,11 @@ window.__variant = (() => {
     ['fin', 'PMD', 'PM Dissect', 'ProdMan Club, IIM A: 99 teams, 219 participants', 'Top 25, semi-finalist', 'Product', '2025'],
   ];
   document.querySelectorAll('table.holdings[data-act]').forEach((table) => {
-    const act = table.dataset.act;
-    const rows = act === 'all' ? H : H.filter((r) => r[0] === act);
-    table.querySelector('thead').innerHTML = `<tr>${table.dataset.cols.split(',').map((c) => `<th>${c}</th>`).join('')}</tr>`;
+    const rows = H.filter((r) => r[0] === table.dataset.act);
+    table.querySelector('thead').innerHTML = `<tr>${table.dataset.cols.split(',').map((c) => `<th>${esc(c)}</th>`).join('')}</tr>`;
     table.querySelector('tbody').innerHTML = rows.map(([, t, n, sub, pos, f, y]) => `
-      <tr><td class="h-tkr">${t}</td><td class="h-name">${n}<small>${sub}</small></td>
-      <td class="h-up">▲ ${pos}</td><td class="h-field">${f}</td><td class="h-yr">${y}</td></tr>`).join('');
+      <tr><td class="h-tkr">${esc(t)}</td><td class="h-name">${esc(n)}<small>${esc(sub)}</small></td>
+      <td class="h-up">▲ ${esc(pos)}</td><td class="h-field">${esc(f)}</td><td class="h-yr">${esc(y)}</td></tr>`).join('');
   });
 })();
 
@@ -1450,4 +1416,25 @@ window.__variant = (() => {
     try { localStorage.setItem('theme', next); } catch (e) { /* ignore */ }
     window.dispatchEvent(new Event('themechange'));
   });
+})();
+
+/* =========================================================
+   Phone nav menu (the button only shows under 820px)
+   ========================================================= */
+(() => {
+  'use strict';
+  const nav = document.querySelector('.nav');
+  const btn = document.getElementById('nav-toggle');
+  if (!nav || !btn) return;
+  const set = (open) => {
+    nav.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  btn.addEventListener('click', () => set(!nav.classList.contains('open')));
+  nav.querySelectorAll('.nav-links a').forEach((a) => a.addEventListener('click', () => set(false)));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && nav.classList.contains('open')) { set(false); btn.focus(); }
+  });
+  document.addEventListener('click', (e) => { if (!nav.contains(e.target)) set(false); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 820) set(false); });
 })();
